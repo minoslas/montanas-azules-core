@@ -1,0 +1,32 @@
+name: Integración Continua - Montañas Azules
+
+# El proceso se activa al hacer push o pull request a la rama 'main' o 'develop'
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Descarga el código del repositorio
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      # 2. Configura el entorno de Node.js
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Usamos una versión estable y moderna
+          cache: 'npm'
+
+      # 3. Instala las dependencias (TypeScript, etc.)
+      - name: Instalar dependencias
+        run: npm install
+
+      # 4. Compila el proyecto (Busca errores de sintaxis o tipos)
+      - name: Compilar TypeScript
+        run: npx tsc

@@ -1,0 +1,24 @@
+{
+  "name": "montanas-azules-core",
+  "version": "1.0.0",
+  "description": "Simulador de gestión de colonias draconianas. Motor WebGL custom y arquitectura MVC estricta. Optimizado para bajo consumo de recursos.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/minoslas/montanas-azules-core.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/minoslas/montanas-azules-core/issues"
+  },
+  "homepage": "https://github.com/minoslas/montanas-azules-core#readme",
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}
