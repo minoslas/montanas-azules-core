@@ -1,0 +1,5 @@
+{
+  "editor.minimap.enabled": false,
+  "git.autorefresh": false,
+  "typescript.disableAutomaticTypeAcquisition": true
+}
