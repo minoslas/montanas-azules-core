@@ -4,8 +4,9 @@
   "description": "Simulador de gestión de colonias draconianas. Motor WebGL custom y arquitectura MVC estricta. Optimizado para bajo consumo de recursos.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "test-logic": "npx tsc && node dist/index.js",
+  "build": "tsc"
+},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/minoslas/montanas-azules-core.git"
