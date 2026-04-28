@@ -21,3 +21,20 @@ export interface IDraconiano {
     posicion: IPosicion3D;
     inventario: Map<TipoRecurso, number>;
 }
+
+// src/model/Tipos.ts
+
+export enum PrioridadTarea {
+    Baja,
+    Media,
+    Alta,
+    Critica
+}
+
+export interface INecesidades {
+    hambre: number;
+    vejiga: number;
+    higiene: number;
+    descanso: number;
+    social: number;
+}

@@ -1,22 +1,21 @@
-// src/index.ts
+// src/index.ts (Actualizado)
 import { Mapa } from "./model/Mapa";
 import { Simulador } from "./controller/Simulador";
+import { Draconiano } from "./model/entities/Draconiano";
 
-// Inicializamos el Modelo
-const miMontaña = new Mapa();
+const miMapa = new Mapa();
+const motor = new Simulador(miMapa);
 
-// Inicializamos el Controlador pasando el Modelo
-const motor = new Simulador(miMontaña);
+// Creamos a nuestro primer habitante
+const korg = new Draconiano("d1", "Korg", 0, 0, 0);
+motor.añadirDraconiano(korg);
 
-console.log("--- 🏔️ Iniciando Ciclo de Vida de la Montaña ---");
+console.log(`--- 🏔️ Bienvenido a la Montaña, ${korg.nombre} ---`);
 
-// Simulamos una secuencia de 50 ticks
-for (let i = 0; i < 50; i++) {
-    // Simulamos una pausa a mitad del proceso solo para testear
-    if (i === 25) motor.togglePausa();
-    if (i === 35) motor.togglePausa();
-
+// Simulamos 200 ticks (Korg empezará a tener hambre tras el tick 160 aprox)
+for (let i = 0; i < 200; i++) {
     motor.procesarTick();
 }
 
-console.log(`--- ✅ Simulación finalizada en el tick: ${motor.getTickActual()} ---`);
+console.log(`--- Final del día ---`);
+console.log(`Estado de ${korg.nombre}: Hambre ${korg.necesidades.hambre}, Salud ${korg.salud}`);
