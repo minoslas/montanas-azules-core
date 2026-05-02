@@ -1,13 +1,5 @@
 // src/model/Mapa.ts
-import { IPosicion3D, TipoRecurso } from "./Tipos";
-
-export enum TipoBloque {
-    AIRE = 0,
-    PIEDRA = 1,
-    TIERRA = 2,
-    GEMA = 3,
-    VETA_MINERAL = 4
-}
+import { TipoBloque } from "./Tipos";
 
 export class Mapa {
     // El "corazón" de la montaña: solo guardamos lo que NO es piedra sólida
@@ -35,15 +27,23 @@ export class Mapa {
     }
 
     /**
-     * Cambia el tipo de bloque en una posición.
+     * Cambia el tipo de un bloque en coordenadas específicas.
+     * Si el tipo es AIRE (o vacío), podemos eliminar el voxel para ahorrar RAM.
      */
     public setBloque(x: number, y: number, z: number, tipo: TipoBloque): void {
-        const clave = this.generarClave(x, y, z);
-        
+        //const clave = this.generarClave(x, y, z); Antigua constante
+        const clave = `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`
+
         // Optimización: Si volvemos a poner piedra, lo borramos del mapa 
         // para liberar memoria, ya que PIEDRA es el valor por defecto.
         if (tipo === TipoBloque.PIEDRA) {
             this.celdas.delete(clave);
+        } else {
+            this.celdas.set(clave, tipo);
+        }
+
+        if (tipo === TipoBloque.AIRE) {
+            this.celdas.delete(clave); //Liberamos RAM
         } else {
             this.celdas.set(clave, tipo);
         }

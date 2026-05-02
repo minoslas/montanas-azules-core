@@ -1,10 +1,49 @@
 // src/model/Tipos.ts
 
-export enum TipoRecurso {
+import { GestorTareas } from "./GestorTareas";
+import { Mapa } from "./Mapa";
+
+export enum TipoBloque {
     PIEDRA = "PIEDRA",
+    AIRE = "AIRE",
     GEMA = "GEMA",
     COMIDA = "COMIDA",
-    AGUA = "AGUA"
+    AGUA = "AGUA",
+    MINERAL = "MINERAL",
+    OBJETO = "OBJETO"
+}
+
+export enum TipoTarea {
+    PICAR = "PICAR",
+    CONSTRUIR = "COSTRUIR",
+    RECOGER = "RECOGER",
+    TRANSPORTAR = "TRANSPORTAR",
+    DECONSTRUIR = "DECONSTRUIR",
+    LIMPIAR = "LIMPIAR",
+    PULIR = "PULIR",
+    COCINAR = "COCINAR",
+    CURANDO = "CURANDO"
+}
+
+export enum EstadoTarea {
+    PENDIENTE,
+    ASIGNADA,
+    COMPLETADA,
+}
+
+export enum EstadoIA {
+    IDLE, //BUSCANDO TRABAJO O DESCANSANDO
+    MOVING, //MOVIENDOSE A UNA TAREA
+    WORKING, //TRABAJANDO EN UNA TAREA
+    LUCHANDO, //COMBATIENDO O DEFENDIENDOSE
+}
+
+export interface ITarea {
+    id: string;
+    tipo: TipoTarea;
+    posicion: IPosicion3D;
+    prioridad: PrioridadTarea;
+    estado: EstadoTarea;
 }
 
 export interface IPosicion3D {
@@ -19,7 +58,7 @@ export interface IDraconiano {
     salud: number;
     hambre: number;
     posicion: IPosicion3D;
-    inventario: Map<TipoRecurso, number>;
+    inventario: Map<TipoBloque, number>;
 }
 
 // src/model/Tipos.ts
@@ -37,4 +76,12 @@ export interface INecesidades {
     higiene: number;
     descanso: number;
     social: number;
+}
+
+//aqui simplificamos mucho codigo...
+export interface IContextoSimulacion {
+    ratio: number;
+    gestor: GestorTareas;
+    mapa: Mapa;
+    tickActual: number;
 }
