@@ -1,6 +1,6 @@
 import { IPosicion3D, TipoBloque } from "../model/Tipos";
 
-export class vec3 {
+export class Vec3 {
     static distancia(a: IPosicion3D, b: IPosicion3D): number {
         const dx = b.x - a.x;
         const dy = b.y - a.y;

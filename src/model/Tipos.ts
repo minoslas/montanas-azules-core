@@ -15,6 +15,7 @@ export enum TipoBloque {
 
 export enum TipoTarea {
     PICAR = "PICAR",
+    DEPOSITAR = "DEPOSITAR",
     CONSTRUIR = "COSTRUIR",
     RECOGER = "RECOGER",
     TRANSPORTAR = "TRANSPORTAR",
@@ -48,6 +49,7 @@ export enum Profesiones {
     Alguacil,
     Posadero
 }
+
 export interface ITarea {
     id: string;
     tipo: TipoTarea;
@@ -102,7 +104,8 @@ export interface IContextoSimulacion {
  * Mas adelante, tal vez el factor de capacidad maxima este basado en la fuerza del draconiano
  */
 export interface IInventario {
-    items: Map<TipoBloque, number>
+    // CORRECCIÓN: La clave es el Enum TipoBloque y el valor es la cantidad (number)
+    items: Map<TipoBloque, number>; 
     capacidadMax: number;
     cargaActual: number;
 }
