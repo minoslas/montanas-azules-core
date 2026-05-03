@@ -35,17 +35,14 @@ export class Simulador {
         }
 
         // Ahora .forEach funcionará porque estamos recorriendo la lista de draconianos
-        this.entidades.forEach(e => {
-            if (e.estaVivo()) {
+        this.entidades.forEach(korg => {
+            if (korg.estaVivo()) {
                 // Asegúrate de usar el nombre exacto que pusiste en Draconiano.ts
                 // Si lo llamaste actualizarEstado, usa ese.
-                e.actualizar(constexto);
+                korg.actualizar(constexto);
             }
         });
 
-        if (this.tickActual % 10 === 0) {
-            console.log(`[Simulador] Tick #${this.tickActual}. Población: ${this.entidades.length}`);
-        }
     }
 
     public getGestor(): GestorTareas {

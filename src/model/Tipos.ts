@@ -38,6 +38,16 @@ export enum EstadoIA {
     LUCHANDO, //COMBATIENDO O DEFENDIENDOSE
 }
 
+export enum Profesiones {
+    Minero, 
+    Artesano,
+    Militar,
+    Armero,
+    ForjadorDeArmas,
+    Medico,
+    Alguacil,
+    Posadero
+}
 export interface ITarea {
     id: string;
     tipo: TipoTarea;
@@ -85,3 +95,15 @@ export interface IContextoSimulacion {
     mapa: Mapa;
     tickActual: number;
 }
+
+/**
+ * Representa el inventario limitado de un trabajador.
+ * @capacidadMax 10 unidades para no sobrecargar el objeto en memoria.
+ * Mas adelante, tal vez el factor de capacidad maxima este basado en la fuerza del draconiano
+ */
+export interface IInventario {
+    items: Map<TipoBloque, number>
+    capacidadMax: number;
+    cargaActual: number;
+}
+

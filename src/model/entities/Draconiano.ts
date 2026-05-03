@@ -4,7 +4,11 @@ import { GestorTareas } from "../GestorTareas";
 import { Mapa } from "../Mapa";
 import { vec3 } from "../../utils/Vector3"
 
-
+/**
+ * @class Draconiano
+ * @description Entidad principal. Usa FSM para IA.
+ * @memory Mantener el estado ligero. No añadir referencias circulares al Mapa.
+ */
 export class Draconiano {
     private progresoTrabajo: number = 0;
     private esfuersoPorTick: number = 25;
@@ -40,8 +44,8 @@ export class Draconiano {
      */
     public actualizar(contexto: IContextoSimulacion): void {
         // Metabolismo Ahora usamos el contexto
-        this.necesidades.hambre += 0.1 * contexto.ratio;
-        this.necesidades.vejiga += 0.15 * contexto.ratio;
+        this.necesidades.hambre += 0.05 * contexto.ratio;
+        this.necesidades.vejiga += 0.05 * contexto.ratio;
         this.necesidades.higiene += 0.05 * contexto.ratio;
         this.necesidades.descanso += 0.08 * contexto.ratio;
 
@@ -116,6 +120,12 @@ export class Draconiano {
         }
     }
 
+    /**
+     * @method trabajar
+     * @param {GestorTareas} gestor - Referencia para liberar tareas.
+     * @param {Mapa} mapa - Referencia para modificar voxels.
+     * @ticks_duracion 4 - El progreso sube de 25 en 25 por tick.
+     */
     private trabajar(gestor: GestorTareas, mapa: Mapa): void {
         if (!this.tareaActual) return;
 
