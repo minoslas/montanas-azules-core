@@ -16,4 +16,13 @@ export class Almacen {
         this.inventario.set(tipo, actual + cantidad);
         console.log(`[ALMACÉN] ${this.nombre} ahora tiene ${actual + cantidad} de ${TipoBloque[tipo]}`);
     }
+
+    public extraerRecurso(tipo: TipoBloque, cantidad: number): boolean {
+        const stock = this.inventario.get(tipo) || 0;
+        if(stock >= cantidad) {
+            this.inventario.set(tipo, stock - cantidad);
+            return true;
+        }
+        return false;
+    }
 }

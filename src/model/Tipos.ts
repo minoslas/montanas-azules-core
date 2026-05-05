@@ -37,6 +37,8 @@ export enum EstadoIA {
     MOVING, //MOVIENDOSE A UNA TAREA
     WORKING, //TRABAJANDO EN UNA TAREA
     LUCHANDO, //COMBATIENDO O DEFENDIENDOSE
+    BUSCAR_RECURSO, //COMER y BEBER
+    DORMIR //DESCANSAR
 }
 
 export enum Profesiones {
@@ -84,9 +86,11 @@ export enum PrioridadTarea {
 
 export interface INecesidades {
     hambre: number;
+    sed: number; //por ahora es virtual (hasta que se cree la mecanica)
+    descanso: number;
+    salud: number;
     vejiga: number;
     higiene: number;
-    descanso: number;
     social: number;
 }
 
