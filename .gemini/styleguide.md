@@ -28,3 +28,10 @@ Para facilitar la asistencia de **Gemini Code Assist**, cada clase y método cr�
  * @performance Impacto estimado en memoria/CPU (ej. O(1), O(n)).
  * @contexto Requisito de Issue #[Número].
  */
+```
+
+## 5. Rendimiento de Consola y Logs (I/O)
+*   **Evitar Spam de I/O**: Las llamadas a `console.log` bloquean el hilo principal. Solo deben dispararse ante cambios de estado concretos, o deben limitarse usando el contexto del tiempo (ej. `if (ctx.tickActual % 10 === 0)`).
+
+## 6. Constantes y Balanceo (Magic Numbers)
+*   **Cero Números Mágicos**: Queda prohibido el uso de números hardcodeados (ej. `this.hambre += 0.1`) en la lógica si representan reglas de balanceo. Deben estar bien identificados o documentados para facilitar su posterior extracción a sistemas de configuración.

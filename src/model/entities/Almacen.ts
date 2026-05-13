@@ -1,6 +1,5 @@
 import { IPosicion3D, TipoBloque } from "../Tipos";
 
-
 export class Almacen {
     public inventario: Map<TipoBloque, number> = new Map(); 
     public posicion: IPosicion3D;
@@ -11,12 +10,23 @@ export class Almacen {
         this.posicion = {x,y,z};
     }
 
+    /**
+     * @description Añade unidades de un recurso de forma aditiva.
+     * @param {TipoBloque} tipo - El material ingresado.
+     * @performance O(1) acceso de mapa.
+     */
     public depositar(tipo: TipoBloque, cantidad: number): void {
         const actual = this.inventario.get(tipo) || 0;
         this.inventario.set(tipo, actual + cantidad);
         console.log(`[ALMACÉN] ${this.nombre} ahora tiene ${actual + cantidad} de ${TipoBloque[tipo]}`);
     }
 
+    /**
+     * @description Intenta consumir stock. Retorna falso si no hay recursos suficientes.
+     * @param {TipoBloque} tipo - Recurso demandado.
+     * @param {number} cantidad - Unidades solicitadas.
+     * @performance O(1) acceso de mapa.
+     */
     public extraerRecurso(tipo: TipoBloque, cantidad: number): boolean {
         const stock = this.inventario.get(tipo) || 0;
         if(stock >= cantidad) {

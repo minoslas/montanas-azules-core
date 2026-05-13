@@ -2,57 +2,54 @@
 import { TipoBloque } from "./Tipos";
 
 export class Mapa {
-    // El "corazón" de la montaña: solo guardamos lo que NO es piedra sólida
-    private celdas: Map<string, TipoBloque>;
+  // El "corazón" de la montaña: solo guardamos lo que NO es piedra sólida
+  private celdas: Map<string, TipoBloque>;
 
-    constructor() {
-        this.celdas = new Map<string, TipoBloque>();
+  constructor() {
+    this.celdas = new Map<string, TipoBloque>();
+  }
+
+  /**
+   * @description Serializa unas coordenadas numéricas en un String para el Sparse Grid.
+   * @performance O(1) interpolación de strings.
+   */
+  private generarClave(x: number, y: number, z: number): string {
+    return `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`;
+  }
+
+  /**
+   * @description Devuelve el bloque de esa coordenada. Si no existe en el Map, asume PIEDRA sólida.
+   * @performance O(1) lectura de HashMap.
+   * @contexto Estructuras Sparse (Regla de Memoria #2).
+   */
+  public getBloque(x: number, y: number, z: number): TipoBloque {
+    const clave = this.generarClave(x, y, z);
+    return this.celdas.get(clave) ?? TipoBloque.PIEDRA;
+  }
+
+  /**
+   * @description Reemplaza un Voxel. Borra la clave si es PIEDRA o AIRE para conservar RAM.
+   * @performance O(1) en inserción o borrado en el Map principal.
+   * @contexto Limpieza Proactiva (GC Friendly - Regla #2).
+   */
+  public setBloque(x: number, y: number, z: number, tipo: TipoBloque): void {
+    const clave = this.generarClave(x, y, z);
+
+    // Optimización (GC Friendly): Si el bloque es AIRE o PIEDRA (el estado por defecto),
+    // lo eliminamos del Map para liberar memoria. getBloque() ya asume PIEDRA
+    // si la clave no existe, cumpliendo la regla del Sparse Grid.
+    if (tipo === TipoBloque.PIEDRA || tipo === TipoBloque.AIRE) {
+      this.celdas.delete(clave);
+    } else {
+      this.celdas.set(clave, tipo);
     }
+  }
 
-    /**
-     * Genera una clave única para el mapa a partir de coordenadas
-     * Ejemplo: (10, 5, -2) -> "10,5,-2"
-     */
-    private generarClave(x: number, y: number, z: number): string {
-        return `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`;
-    }
-
-    /**
-     * Obtiene el bloque en una posición. 
-     * Si no está en el mapa, asumimos que es PIEDRA (ahorro de RAM).
-     */
-    public getBloque(x: number, y: number, z: number): TipoBloque {
-        const clave = this.generarClave(x, y, z);
-        return this.celdas.get(clave) ?? TipoBloque.PIEDRA;
-    }
-
-    /**
-     * Cambia el tipo de un bloque en coordenadas específicas.
-     * Si el tipo es AIRE (o vacío), podemos eliminar el voxel para ahorrar RAM.
-     */
-    public setBloque(x: number, y: number, z: number, tipo: TipoBloque): void {
-        //const clave = this.generarClave(x, y, z); Antigua constante
-        const clave = `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`
-
-        // Optimización: Si volvemos a poner piedra, lo borramos del mapa 
-        // para liberar memoria, ya que PIEDRA es el valor por defecto.
-        if (tipo === TipoBloque.PIEDRA) {
-            this.celdas.delete(clave);
-        } else {
-            this.celdas.set(clave, tipo);
-        }
-
-        if (tipo === TipoBloque.AIRE) {
-            this.celdas.delete(clave); //Liberamos RAM
-        } else {
-            this.celdas.set(clave, tipo);
-        }
-    }
-
-    /**
-     * Devuelve cuántos bloques "especiales" tenemos cargados en RAM.
-     */
-    public obtenerCargaMemoria(): number {
-        return this.celdas.size;
-    }
+  /**
+   * @description Obtiene la huella actual de almacenamiento del mapa modificado.
+   * @performance O(1) accediendo a la propiedad size.
+   */
+  public obtenerCargaMemoria(): number {
+    return this.celdas.size;
+  }
 }

@@ -3,8 +3,11 @@ import { PrioridadTarea, IPosicion3D, TipoTarea } from "./Tipos";
 
 export class LogicaMinera {
     /**
-     * Designamos un area en forma de cubo para ser minada
-     * Generaremos una tarea para cada bloque que tenga que ser minado
+     * @description Construye tareas individuales en un cubo 3D volumétrico designado por el jugador.
+     * @param {IPosicion3D} inicio - Esquina A.
+     * @param {IPosicion3D} fin - Esquina opuesta B.
+     * @performance O(W*H*D) instanciación en masa de tareas en el array. Puede penalizar RAM en áreas muy grandes.
+     * @contexto Herramienta de interfaz al usuario, transitoria hacia Modelo.
      */
     static designarArea(
         gestor: GestorTareas,

@@ -3,6 +3,11 @@
 import { GestorTareas } from "./GestorTareas";
 import { Mapa } from "./Mapa";
 
+/**
+ * @description Identificadores de los tipos de bloques del Voxel Grid y Recursos.
+ * @performance Ligero, optimizado para claves de diccionarios en los Almacenes.
+ * @contexto Representación unificada de entidades extraíbles.
+ */
 export enum TipoBloque {
     PIEDRA = "PIEDRA",
     AIRE = "AIRE",
@@ -16,6 +21,7 @@ export enum TipoBloque {
 export enum TipoTarea {
     PICAR = "PICAR",
     DEPOSITAR = "DEPOSITAR",
+    CONSUMIR = "CONSUMIR",
     CONSTRUIR = "COSTRUIR",
     RECOGER = "RECOGER",
     TRANSPORTAR = "TRANSPORTAR",
@@ -84,6 +90,11 @@ export enum PrioridadTarea {
     Critica
 }
 
+/**
+ * @description Modelo puro de datos para el estado fisiológico y psíquico.
+ * @performance O(1), mantenido intencionalmente plano para ayudar al GC.
+ * @contexto Estado de simulación del Modelo MVC.
+ */
 export interface INecesidades {
     hambre: number;
     sed: number; //por ahora es virtual (hasta que se cree la mecanica)
@@ -95,6 +106,11 @@ export interface INecesidades {
 }
 
 //aqui simplificamos mucho codigo...
+/**
+ * @description Paquete inyectado cada ciclo a las entidades para evitar dependencias circulares.
+ * @performance Creado/reutilizado 1 sola vez por Tick en el Controlador.
+ * @contexto Cumple Regla #1 (Comunicación por Contexto).
+ */
 export interface IContextoSimulacion {
     ratio: number;
     gestor: GestorTareas;
@@ -113,4 +129,3 @@ export interface IInventario {
     capacidadMax: number;
     cargaActual: number;
 }
-
