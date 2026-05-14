@@ -4,7 +4,7 @@ import { Simulador } from "./controller/Simulador";
 import { Draconiano } from "./model/entities/Draconiano";
 import { LogicaMinera } from "./model/LogicaMinera";
 import { Almacen } from "./model/entities/Almacen";
-import { TipoBloque } from "./model/Tipos";
+import { TipoBloque, TipoTarea, PrioridadTarea} from "./model/Tipos";
 
 const miMapa = new Mapa();
 const motor = new Simulador(miMapa);
@@ -20,6 +20,10 @@ motor.añadirAlmacen(AlmC);
 // Le añadimos un tunel de tres bloques a picar
 LogicaMinera.designarArea(motor.getGestor(), {x:1,y:0,z:0}, {x:60,y:0,z:0})
 
+// Añadimos una tarea de CONSTRUCCIÓN
+motor.getGestor().añadirTarea(TipoTarea.CONSTRUIR, { x: 5, y: 1, z: 0 }, PrioridadTarea.Alta);
+
+// Mensaje de bienvenida
 console.log(`--- 🏔️ Bienvenido a la Montaña, ${korg.nombre} ---`);
 
 // Simulamos suficientes ticks para que se pueda completar la tarea (Korg empezará a tener hambre tras el tick 160 aprox)

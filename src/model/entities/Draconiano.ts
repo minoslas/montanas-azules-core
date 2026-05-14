@@ -132,11 +132,18 @@ export class Draconiano {
      * @contexto Autogestión laboral para el ciclo de IDLE optimizado por vecindad.
      */
     private buscarTrabajo(gestor: GestorTareas): void {
-        // Solo buscamos trabajo si hay espacio en la mochila
-        if (this.getCargaActual() >= this.getCapacidadMax()) return;
+        // Solo buscamos trabajo si hay espacio (OJO: para construir, sí queremos trabajar aunque la mochila esté llena)
+        if (this.getCargaActual() >= this.getCapacidadMax() && this.estado !== EstadoIA.WORKING) {
+            // Nota: La intercepción logística del Simulador ya se encarga de enviarlo a descargar,
+            // pero si hay una tarea de CONSTRUIR cerca, podría usar esa piedra en lugar de descargarla.
+        }
+
+        // ISSUE #9: Comprobamos si llevamos piedra
+        const cantidadPiedra = this.inventario.items.get(TipoBloque.PIEDRA) || 0;
+        const tienePiedra = cantidadPiedra > 0;
 
         // Pasamos nuestra posición para que el Gestor calcule la proximidad
-        const tarea = gestor.obtenerTareaDisponible(this.posicion);
+        const tarea = gestor.obtenerTareaDisponible(this.posicion, tienePiedra);
         if (tarea) {
             this.tareaActual = tarea;
             gestor.asignarTarea(tarea.id);
@@ -214,7 +221,11 @@ export class Draconiano {
         this.progresoTrabajo += this.esfuerzoPorTick;
 
         if (this.progresoTrabajo >= 100) {
-            this.finalizarMineria(gestor, mapa);
+            if(this.tareaActual.tipo === TipoTarea.CONSTRUIR) {
+                this.finalizarConstruccion(gestor, mapa);
+            } else {
+                this.finalizarMineria(gestor, mapa);
+            }
         }
     }
 
@@ -235,6 +246,32 @@ export class Draconiano {
         }
 
         mapa.setBloque(p.x, p.y, p.z, TipoBloque.AIRE);
+        gestor.finalizarTarea(this.tareaActual!.id);
+        this.limpiarEstado();
+    }
+
+/**
+     * @description Consume una unidad de piedra del inventario y coloca un MURO_CONSTRUIDO en el mapa.
+     * @param {GestorTareas} gestor - Para finalizar la tarea.
+     * @param {Mapa} mapa - Para alterar los voxels.
+     * @contexto Albañilería básica (Issue #9).
+     */
+    private finalizarConstruccion(gestor: GestorTareas, mapa: Mapa): void {
+        const p = this.tareaActual!.posicion;
+        const piedraActual = this.inventario.items.get(TipoBloque.PIEDRA) || 0;
+
+        if (piedraActual > 0) {
+            // Consumimos el recurso
+            this.inventario.items.set(TipoBloque.PIEDRA, piedraActual - 1);
+            this.inventario.cargaActual--;
+            
+            // Alteramos el entorno
+            mapa.setBloque(p.x, p.y, p.z, TipoBloque.MURO_PIEDRA);
+            console.log(`[CONSTRUCCIÓN] ${this.nombre} erigió un muro en X:${p.x}. Piedra restante: ${piedraActual - 1}`);
+        } else {
+            console.warn(`[ERROR LÓGICO] ${this.nombre} intentó construir sin piedra.`);
+        }
+
         gestor.finalizarTarea(this.tareaActual!.id);
         this.limpiarEstado();
     }
