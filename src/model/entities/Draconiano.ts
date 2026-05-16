@@ -81,6 +81,12 @@ export class Draconiano {
                 this.tareaActual = null; // Soltamos la tarea actual para que vuelva al Gestor
             }
         }
+        // Prioridad Vital 2 Issue #10 Fatiga extrema
+        else if (this.necesidades.descanso > 85 && this.estado !== EstadoIA.DORMIR) {
+            console.log(`[SUEÑO] ${this.nombre} cae rendido de fatiga en X:${this.posicion.x}.`);
+            this.estado = EstadoIA.DORMIR;
+            this.tareaActual = null; // Dejamos de Trabajar
+        }
 
         switch (this.estado) {
             case EstadoIA.IDLE:
@@ -102,6 +108,9 @@ export class Draconiano {
                     console.log(`[IA] ${this.nombre} brama pidiendo comida/agua...`);
                 }
                 break;
+            case EstadoIA.DORMIR:
+                this.dormir(ctx);
+                break;
         }
     }
 
@@ -116,10 +125,14 @@ export class Draconiano {
 
         // modificado en modo test extricto para que actue agua y sed
         this.necesidades.hambre += 0.1 * ratio; 
-        this.necesidades.sed += 0.15 * ratio; 
-        this.necesidades.descanso += 0.05 * ratio;
+        this.necesidades.sed += 0.15 * ratio;
+        
+        // Solo nos cansamos si no estamos durmiendo Issue #10
+        if(this.estado !== EstadoIA.DORMIR) {
+            this.necesidades.descanso += 0.05 * ratio;
+        }
 
-        if(this.necesidades.hambre >= 100 || this.necesidades.sed >= 100) {
+        if(this.necesidades.hambre >= 100 || this.necesidades.sed >= 100 || this.necesidades.descanso >= 100) {
             this.salud -= 1 * ratio; 
             if(ctx.tickActual % 10 === 0) console.log(`[PELIGRO] ${this.nombre} está muriendo de inanición/deshidratación...`);
         }
@@ -297,6 +310,23 @@ export class Draconiano {
         this.tareaActual = null;
         this.progresoTrabajo = 0;
         this.estado = EstadoIA.IDLE;
+    }
+
+    /**
+     * @description Lógica de recuperación de energía durante el estado de sueño.
+     * @param {IContextoSimulacion} ctx - Contexto de la simulación.
+     * @performance O(1).
+     * @contexto Sistema de fatiga y descanso (Issue #10).
+     */
+    private dormir(ctx: IContextoSimulacion): void {
+        // Recuperamos energía rápidamente (ej: 2 puntos por tick)
+        this.necesidades.descanso -= 2.0 * ctx.ratio;
+
+        if (this.necesidades.descanso <= 0) {
+            this.necesidades.descanso = 0; // Evitamos números negativos
+            this.estado = EstadoIA.IDLE; // Despertamos listos para pedir trabajo
+            console.log(`[SUEÑO] ${this.nombre} ha despertado con energías renovadas.`);
+        }
     }
 
     /**

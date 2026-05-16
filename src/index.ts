@@ -17,6 +17,9 @@ AlmC.inventario.set(TipoBloque.COMIDA,100);
 motor.añadirDraconiano(korg);
 motor.añadirAlmacen(AlmC);
 
+// Modificicadores temporales para pruebas
+korg.necesidades.descanso = 80; //Para probar descanso
+
 // Le añadimos un tunel de tres bloques a picar
 LogicaMinera.designarArea(motor.getGestor(), {x:1,y:0,z:0}, {x:60,y:0,z:0})
 
