@@ -9,6 +9,16 @@ import { Mapa } from "../Mapa";
  * @contexto Entidad central del Modelo, independiente del Controlador y la Vista (MVC Estricto).
  */
 export class Draconiano {
+    // --- CONSTANTES DE BALANCEO (Regla #6) ---
+    private readonly UMBRAL_CRITICO = 85;
+    private readonly DESGASTE_HAMBRE = 0.1;
+    private readonly DESGASTE_SED = 0.15;
+    private readonly DESGASTE_FATIGA = 0.05;
+    private readonly DANO_INANICION = 1.0;
+    private readonly RECUPERACION_SUENO = 2.0;
+    private readonly CURACION_PASIVA = 10;
+    private readonly DISTANCIA_INTERACCION = 0.2;
+
     readonly id: string;
 
     private inventario: IInventario;
@@ -34,6 +44,7 @@ export class Draconiano {
      * @performance O(1)
      */
     public getCargaActual(): number { return this.inventario.cargaActual; }
+
     /**
      * @description Capacidad máxima en slots configurada al iniciar.
      * @performance O(1)
@@ -74,15 +85,32 @@ export class Draconiano {
         const yaEstaSalvandose = this.tareaActual?.tipo === TipoTarea.CONSUMIR;
 
         // PRIORIDAD VITAL: Si hay peligro, abortamos la minería inmediatamente
-        if ((this.necesidades.hambre > 85  || this.necesidades.sed > 85) && !yaEstaSalvandose) {
-            if(this.estado !== EstadoIA.BUSCAR_RECURSO){
-                console.log(`[ALERTA] ${this.nombre} abandona su tarea por instinto de supervivencia.`);
+        // Hambre y Sed
+        if (this.necesidades.sed > this.UMBRAL_CRITICO) {
+            const aguaEnMochila = this.inventario.items.get(TipoBloque.AGUA) || 0;
+
+            //La Cantimplora: Si hay agua en la mochila se la beberá.
+            if (aguaEnMochila > 0) {
+                console.log(`[SUPERVIVENCIA] ${this.nombre} bebe agua directamente de su cantimplora.`);
+                this.inventario.items.set(TipoBloque.AGUA, aguaEnMochila - 1);
+                this.inventario.cargaActual--;
+                this.necesidades.sed = 0;
+            }
+            // Si no tiene agua en la mochila
+            else if (!yaEstaSalvandose && this.estado !== EstadoIA.BUSCAR_RECURSO) {
+                console.log(`[ALERTA] ${this.nombre} abandona su tarea por sed.`);
                 this.estado = EstadoIA.BUSCAR_RECURSO;
-                this.tareaActual = null; // Soltamos la tarea actual para que vuelva al Gestor
+                this.tareaActual = null; // Soltamos la tarea actual
             }
         }
+        // Hambre
+        else if (this.necesidades.hambre > this.UMBRAL_CRITICO && !yaEstaSalvandose && this.estado !== EstadoIA.BUSCAR_RECURSO) {
+            console.log(`[ALERTA] ${this.nombre} abandona su tarea por hambre.`);
+            this.estado = EstadoIA.BUSCAR_RECURSO;
+            this.tareaActual = null; // Soltamos la tarea actual para que vuelva al Gestor
+        }
         // Prioridad Vital 2 Issue #10 Fatiga extrema
-        else if (this.necesidades.descanso > 85 && this.estado !== EstadoIA.DORMIR) {
+        else if (this.necesidades.descanso > this.UMBRAL_CRITICO && this.estado !== EstadoIA.DORMIR) {
             console.log(`[SUEÑO] ${this.nombre} cae rendido de fatiga en X:${this.posicion.x}.`);
             this.estado = EstadoIA.DORMIR;
             this.tareaActual = null; // Dejamos de Trabajar
@@ -93,16 +121,16 @@ export class Draconiano {
                 this.buscarTrabajo(ctx.gestor);
                 break;
             case EstadoIA.MOVING:
-                this.moverseATarea();
+                this.moverseATarea(ctx);
                 break;
             case EstadoIA.WORKING:
-                this.trabajar(ctx.gestor, ctx.mapa);
+                this.trabajar(ctx);
                 break;
             case EstadoIA.BUSCAR_RECURSO:
                 // FIX DEL BUCLE: Si estamos buscando recursos, esperamos la orden del Simulador.
                 // NO volvemos a IDLE si no tenemos tarea.
                 if (this.tareaActual) {
-                    this.moverseATarea();
+                    this.moverseATarea(ctx);
                 } else if (ctx.tickActual % 5 === 0) {
                     // Mensaje esporádico para no saturar la consola
                     console.log(`[IA] ${this.nombre} brama pidiendo comida/agua...`);
@@ -124,16 +152,16 @@ export class Draconiano {
         const ratio = ctx.ratio;
 
         // modificado en modo test extricto para que actue agua y sed
-        this.necesidades.hambre += 0.1 * ratio; 
-        this.necesidades.sed += 0.15 * ratio;
+        this.necesidades.hambre += this.DESGASTE_HAMBRE * ratio; 
+        this.necesidades.sed += this.DESGASTE_SED * ratio;
         
         // Solo nos cansamos si no estamos durmiendo Issue #10
         if(this.estado !== EstadoIA.DORMIR) {
-            this.necesidades.descanso += 0.05 * ratio;
+            this.necesidades.descanso += this.DESGASTE_FATIGA * ratio;
         }
 
         if(this.necesidades.hambre >= 100 || this.necesidades.sed >= 100 || this.necesidades.descanso >= 100) {
-            this.salud -= 1 * ratio; 
+            this.salud -= this.DANO_INANICION * ratio; 
             if(ctx.tickActual % 10 === 0) console.log(`[PELIGRO] ${this.nombre} está muriendo de inanición/deshidratación...`);
         }
     }
@@ -166,10 +194,11 @@ export class Draconiano {
 
     /**
      * @description Desplaza la entidad hacia el destino de su tarea usando utilidades vectoriales.
+     * @param {IContextoSimulacion} ctx - Contexto de la simulación con el ratio de tiempo actual.
      * @performance O(1) en cálculos matemáticos delegados a utilidades externas (Vec3).
      * @contexto Cumple regla #3 de Matemáticas Vectoriales sin recálculos euclidianos crudos.
      */
-    private moverseATarea(): void {
+    private moverseATarea(ctx: IContextoSimulacion): void {
         if (!this.tareaActual) { 
             // Si nos cancelan la tarea en pleno viaje, volvemos a IDLE (solo si no es supervivencia)
             if (this.estado !== EstadoIA.BUSCAR_RECURSO) this.estado = EstadoIA.IDLE; 
@@ -179,12 +208,12 @@ export class Draconiano {
         const destino = this.tareaActual.posicion;
         const distancia = Vec3.distancia(this.posicion, destino);
 
-        if (distancia < 0.2) {
+        if (distancia < this.DISTANCIA_INTERACCION) {
             // LLEGAMOS AL DESTINO. ¿A QUÉ VENÍAMOS?
             if (this.tareaActual.tipo === TipoTarea.CONSUMIR) {
                 this.ejecutarConsumo(); // CRÍTICO: Paréntesis añadidos y nombre corregido
             } else if (this.tareaActual.tipo === TipoTarea.DEPOSITAR) {
-                this.ejecutarDescarga(); // RESTAURADO: Necesario para vaciar la mochila de piedra
+                this.ejecutarDescarga(ctx); // RESTAURADO: Necesario para vaciar la mochila de piedra
             } else {
                 this.estado = EstadoIA.WORKING;
                 console.log(`[IA] ${this.nombre} ha llegado al tajo.`);
@@ -209,7 +238,7 @@ export class Draconiano {
         
         // Un poco de curación pasiva por haber sobrevivido
         if (this.salud < 100) {
-            this.salud += 10;
+            this.salud += this.CURACION_PASIVA;
         }
 
         this.limpiarEstado();
@@ -218,16 +247,15 @@ export class Draconiano {
 
     /**
      * @description Acumula progreso en la tarea actual. Desencadena la finalización al llegar al 100%.
-     * @param {GestorTareas} gestor - Referencia temporal al gestor.
-     * @param {Mapa} mapa - Referencia temporal al mapa (Sparse Voxel Grid).
+     * @param {IContextoSimulacion} ctx - Contexto inyectado en el tick actual.
      * @performance O(1).
      */
-    private trabajar(gestor: GestorTareas, mapa: Mapa): void {
+    private trabajar(ctx: IContextoSimulacion): void {
         if (!this.tareaActual) return;
 
         // Guardia de seguridad: si por algún motivo entra a trabajar con tarea de depositar
         if (this.tareaActual.tipo === TipoTarea.DEPOSITAR) {
-            this.ejecutarDescarga();
+            this.ejecutarDescarga(ctx); //Ahora si reconoce ctx
             return;
         }
 
@@ -235,20 +263,21 @@ export class Draconiano {
 
         if (this.progresoTrabajo >= 100) {
             if(this.tareaActual.tipo === TipoTarea.CONSTRUIR) {
-                this.finalizarConstruccion(gestor, mapa);
+                this.finalizarConstruccion(ctx);
+            } else if(this.tareaActual.tipo === TipoTarea.RECOLECTAR) {
+                this.finalizarRecoleccion(ctx); // Nuevo Issue #11
             } else {
-                this.finalizarMineria(gestor, mapa);
+                this.finalizarMineria(ctx);
             }
         }
     }
 
     /**
      * @description Concluye una tarea minera: añade recurso al inventario y cambia el mapa a AIRE.
-     * @param {GestorTareas} gestor - Gestor para marcar la finalización (limpieza en RAM de la tarea).
-     * @param {Mapa} mapa - Para reemplazar el bloque picado por AIRE.
+     * @param {IContextoSimulacion} ctx - Contexto inyectado de la simulación para alterar el mapa y finalizar la tarea.
      * @performance O(1) impacto en la estructura Map del mapa.
      */
-    private finalizarMineria(gestor: GestorTareas, mapa: Mapa): void {
+    private finalizarMineria(ctx: IContextoSimulacion): void {
         const p = this.tareaActual!.posicion;
 
         if (this.inventario.cargaActual < this.inventario.capacidadMax) {
@@ -258,18 +287,42 @@ export class Draconiano {
             console.log(`[INV] ${this.nombre} cargó PIEDRA (${this.inventario.cargaActual}/10).`);
         }
 
-        mapa.setBloque(p.x, p.y, p.z, TipoBloque.AIRE);
-        gestor.finalizarTarea(this.tareaActual!.id);
+        ctx.mapa.setBloque(p.x, p.y, p.z, TipoBloque.AIRE);
+        ctx.gestor.finalizarTarea(this.tareaActual!.id);
         this.limpiarEstado();
     }
 
-/**
+     /**
+     * @description Extrae un bloque de Agua/Recurso y lo guarda en el Inventario.
+     * @param {IContextoSimulacion} ctx - Contexto inyectado de la simulación.
+     * @contexto Recoleccion de recursos naturales (agua en este caso) (Issue #11).
+     */
+    private finalizarRecoleccion(ctx: IContextoSimulacion) {
+        const posicion = this.tareaActual!.posicion;
+
+        //Confirmamos que bloque esta recolectando actualmente
+        const BloqueEnMapa = ctx.mapa.getBloque(posicion.x, posicion.y, posicion.z);
+        
+        if (this.inventario.cargaActual < this.inventario.capacidadMax) {
+            // Guardamos el bloque (en este caso agua)
+            const actual = this.inventario.items.get(BloqueEnMapa) || 0;
+            this.inventario.items.set(BloqueEnMapa, actual + 1);
+            this.inventario.cargaActual++;
+            console.log(`[INV] ${this.nombre} recolectó un recurso (${this.inventario.cargaActual}/10).`);
+        }
+
+        // Por el momento, el "manantial" se seca
+        ctx.mapa.setBloque(posicion.x, posicion.y, posicion.z, TipoBloque.AIRE);
+        ctx.gestor.finalizarTarea(this.tareaActual!.id);
+        this.limpiarEstado();
+    }
+
+    /**
      * @description Consume una unidad de piedra del inventario y coloca un MURO_CONSTRUIDO en el mapa.
-     * @param {GestorTareas} gestor - Para finalizar la tarea.
-     * @param {Mapa} mapa - Para alterar los voxels.
+     * @param {IContextoSimulacion} ctx - Contexto inyectado de la simulación.
      * @contexto Albañilería básica (Issue #9).
      */
-    private finalizarConstruccion(gestor: GestorTareas, mapa: Mapa): void {
+    private finalizarConstruccion(ctx: IContextoSimulacion): void {
         const p = this.tareaActual!.posicion;
         const piedraActual = this.inventario.items.get(TipoBloque.PIEDRA) || 0;
 
@@ -279,22 +332,39 @@ export class Draconiano {
             this.inventario.cargaActual--;
             
             // Alteramos el entorno
-            mapa.setBloque(p.x, p.y, p.z, TipoBloque.MURO_PIEDRA);
+            ctx.mapa.setBloque(p.x, p.y, p.z, TipoBloque.MURO_PIEDRA);
             console.log(`[CONSTRUCCIÓN] ${this.nombre} erigió un muro en X:${p.x}. Piedra restante: ${piedraActual - 1}`);
         } else {
             console.warn(`[ERROR LÓGICO] ${this.nombre} intentó construir sin piedra.`);
         }
 
-        gestor.finalizarTarea(this.tareaActual!.id);
+        ctx.gestor.finalizarTarea(this.tareaActual!.id);
         this.limpiarEstado();
     }
 
     /**
      * @description Vacía la carga en el almacén logístico.
+     * @param {IContextoSimulacion} contexto - Contexto inyectado de la simulación con los almacenes.
      * @performance O(1). Usa .clear() del Map para ser amigable con la RAM y el GC.
      * @contexto Logística de inventario (Regla de Memoria).
      */
-    private ejecutarDescarga(): void {
+    private ejecutarDescarga(contexto: IContextoSimulacion): void {
+        const posicion = this.tareaActual!.posicion;
+
+        //buscamos el almacen en nuestras cordenadas
+        const almacenDestino = contexto.almacenes.find(a => a.posicion.x === posicion.x && a.posicion.y === posicion.y && a.posicion.z === posicion.z);
+
+        if (almacenDestino) {
+            //Transferimos los Items uno a uno
+            for (const [tipo, cantidad] of this.inventario.items.entries()) {
+                const stockActual = almacenDestino.inventario.get(tipo) || 0;
+                almacenDestino.inventario.set(tipo, stockActual + cantidad);
+                console.log(`[LOGÍSTICA] ${this.nombre} depositó ${cantidad} de ${TipoBloque[tipo]} en el Almacén.`);
+            }
+        } else {
+            console.warn(`[ERROR LÓGICO] ${this.nombre} intentó descargar pero no hay almacén en X:${posicion.x}.`);
+        }
+        // Ahoraa vaciamos la mochila
         this.inventario.items.clear();
         this.inventario.cargaActual = 0;
         this.limpiarEstado();
@@ -320,7 +390,7 @@ export class Draconiano {
      */
     private dormir(ctx: IContextoSimulacion): void {
         // Recuperamos energía rápidamente (ej: 2 puntos por tick)
-        this.necesidades.descanso -= 2.0 * ctx.ratio;
+        this.necesidades.descanso -= this.RECUPERACION_SUENO * ctx.ratio;
 
         if (this.necesidades.descanso <= 0) {
             this.necesidades.descanso = 0; // Evitamos números negativos

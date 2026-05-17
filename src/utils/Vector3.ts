@@ -6,6 +6,7 @@ export class Vec3 {
      * @param {IPosicion3D} a - Inicio
      * @param {IPosicion3D} b - Fin
      * @performance O(1) cálculos trigonométricos base.
+     * @contexto Utilidad matemática base.
      */
     static distancia(a: IPosicion3D, b: IPosicion3D): number {
         const dx = b.x - a.x;
@@ -16,9 +17,11 @@ export class Vec3 {
 
     /**
      * @description Calcula un nuevo punto desplazado hacia el objetivo según la velocidad asignada.
+     * @param {IPosicion3D} desde - Origen del desplazamiento.
      * @param {IPosicion3D} hacia - El destino al que tendemos.
      * @param {number} velocidad - Multiplicador de escala.
      * @performance O(1).
+     * @contexto Utilidad matemática base para movimientos espaciales.
      */
     static hacia(desde: IPosicion3D, hacia: IPosicion3D, velocidad: number): IPosicion3D {
         const d = this.distancia(desde, hacia);
