@@ -35,3 +35,7 @@ Para facilitar la asistencia de **Gemini Code Assist**, cada clase y método cr�
 
 ## 6. Constantes y Balanceo (Magic Numbers)
 *   **Cero Números Mágicos**: Queda prohibido el uso de números hardcodeados (ej. `this.hambre += 0.1`) en la lógica si representan reglas de balanceo. Deben estar bien identificados o documentados para facilitar su posterior extracción a sistemas de configuración.
+
+## 7. Persistencia y Serialización (Guardado en JSON)
+*   **Serialización de Estructuras Map**: Los objetos `Map` (como el Sparse Voxel Grid de `Mapa` o los inventarios) no son serializables por defecto en JSON. Deben transformarse explícitamente a arrays de pares `[clave, valor]` o a objetos literales antes de usar `JSON.stringify`, y viceversa al usar `JSON.parse`.
+*   **Guardado Asíncrono (GC Friendly)**: Si el mundo crece sustancialmente, las operaciones de guardado deben ser progresivas o manejar eficientemente la cadena de texto para evitar duplicar el uso de memoria en un único "pico" que sature la restricción de los 4GB de RAM.

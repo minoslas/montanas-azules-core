@@ -29,4 +29,4 @@ jobs:
 
       # 4. Compila el proyecto (Busca errores de sintaxis o tipos)
       - name: Compilar TypeScript
-        run: npx tsc
+        run: npx tsc --noEmit

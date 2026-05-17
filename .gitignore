@@ -8,3 +8,8 @@ out/
 # Logs y archivos temporales
 npm-debug.log*
 .DS_Store
+
+# Entorno, Caché y Testing
+.env
+coverage/
+*.tsbuildinfo
