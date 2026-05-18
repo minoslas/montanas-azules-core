@@ -52,4 +52,35 @@ export class Mapa {
   public obtenerCargaMemoria(): number {
     return this.celdas.size;
   }
+
+  /**
+   * @description Serializa el estado actual del Sparse Voxel Grid a una cadena JSON.
+   * @performance O(N) donde N es la cantidad de bloques modificados. Crea un array intermedio temporal.
+   * @contexto Persistencia y serialización de mundo (Regla #7).
+   */
+  public toJSON(): string {
+    // Convertimos el Map en un array de pares [string, TipoBloque] para poder serializarlo
+    const entradas = Array.from(this.celdas.entries());
+    return JSON.stringify({ celdas: entradas });
+  }
+
+  /**
+   * @description Restaura el estado del mapa desde una cadena JSON previamente generada.
+   * @param {string} json - Cadena JSON con el estado del mapa.
+   * @performance O(N) de reconstrucción. Reutiliza la instancia actual de celdas para ayudar al GC.
+   * @contexto Persistencia y serialización de mundo (Regla #7).
+   */
+  public fromJSON(json: string): void {
+    try {
+      const datos = JSON.parse(json);
+      if (datos && Array.isArray(datos.celdas)) {
+        this.celdas.clear(); // Vaciamos sin destruir la instancia
+        for (const [clave, tipo] of datos.celdas) {
+          this.celdas.set(clave, tipo as TipoBloque);
+        }
+      }
+    } catch (error) {
+      console.error("[MAPA-ERROR] Fallo crítico al deserializar el mundo.", error);
+    }
+  }
 }

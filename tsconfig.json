@@ -2,14 +2,15 @@
   "compilerOptions": {
     "target": "ESNext",
     "module": "CommonJS",
-    "rootDir": "./src",            /* Solo miramos dentro de src */
+    "rootDir": "./src" /* Solo miramos dentro de src */,
     "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "verbatimModuleSyntax": false   /* Esto soluciona el error 1287 */
+    "verbatimModuleSyntax": false /* Esto soluciona el error 1287 */,
+    "types": ["node"]
   },
-  "include": ["src/**/*"],         /* Solo incluimos lo que esté en src */
+  "include": ["src/**/*"] /* Solo incluimos lo que esté en src */,
   "exclude": ["node_modules", "docs", "dist"] /* Ignoramos el resto */
 }

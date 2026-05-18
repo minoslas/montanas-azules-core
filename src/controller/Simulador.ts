@@ -162,4 +162,64 @@ export class Simulador {
   public getGestor(): GestorTareas {
     return this.gestorTareas;
   }
+
+  /**
+   * @description Serializa el estado global de la simulación empaquetando todos los submódulos.
+   * @performance O(E + A + T) donde E=Entidades, A=Almacenes, T=Tareas.
+   * @contexto Persistencia centralizada de la partida (Regla #7).
+   */
+  public toJSON(): string {
+    const estadoGlobal = {
+      tickActual: this.tickActual,
+      pausado: this.pausado,
+      gestorTareas: JSON.parse(this.gestorTareas.toJSON()), // Parseamos para anidarlo limpiamente
+      // NOTA: Para almacenar entidades y almacenes delegamos en sus propios métodos toJSON.
+      // Como devuelven string, los parseamos para construir un único gran árbol JSON.
+      entidades: this.entidades.map(e => JSON.parse(e.toJSON())),
+      almacenes: this.almacenes.map(a => JSON.parse(a.toJSON())) 
+    };
+    return JSON.stringify(estadoGlobal);
+  }
+
+  /**
+   * @description Restaura atributos globales y coordina la carga de submódulos.
+   * @param {string} json - Cadena JSON del savefile.
+   * @performance O(E + A + T). 
+   * @contexto Carga centralizada de la partida (Regla #7).
+   */
+  public fromJSON(json: string): void {
+    try {
+      const datos = JSON.parse(json);
+      
+      if (datos.tickActual !== undefined) this.tickActual = datos.tickActual;
+      if (datos.pausado !== undefined) this.pausado = datos.pausado;
+      
+      if (datos.gestorTareas) {
+        this.gestorTareas.fromJSON(JSON.stringify(datos.gestorTareas));
+      }
+
+      // Reconstrucción de Entidades
+      if (datos.entidades && Array.isArray(datos.entidades)) {
+        this.entidades = [];
+        for (const eDatos of datos.entidades) {
+            const d = new Draconiano(eDatos.id || "d_generico", eDatos.nombre || "Desconocido", 0, 0, 0);
+            d.fromJSON(JSON.stringify(eDatos));
+            this.entidades.push(d);
+        }
+      }
+
+      // Reconstrucción de Almacenes
+      if (datos.almacenes && Array.isArray(datos.almacenes)) {
+        this.almacenes = [];
+        for (const aDatos of datos.almacenes) {
+            const a = new Almacen(aDatos.nombre || "Almacen", 0, 0, 0);
+            a.fromJSON(JSON.stringify(aDatos));
+            this.almacenes.push(a);
+        }
+      }
+
+    } catch (error) {
+      console.error("[SIMULADOR-ERROR] Fallo crítico al cargar el estado global de la simulación.", error);
+    }
+  }
 }

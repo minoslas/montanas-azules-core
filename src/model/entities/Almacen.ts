@@ -35,4 +35,35 @@ export class Almacen {
         }
         return false;
     }
+
+    /**
+     * @description Serializa el inventario y estado del almacén a JSON.
+     * @performance O(I) donde I son los tipos de items almacenados.
+     * @contexto Persistencia y guardado de partidas (Regla #7).
+     */
+    public toJSON(): string {
+        return JSON.stringify({
+            nombre: this.nombre,
+            posicion: this.posicion,
+            inventario: Array.from(this.inventario.entries())
+        });
+    }
+
+    /**
+     * @description Restaura el estado del almacén desde JSON.
+     * @param {string} json - JSON string.
+     * @performance O(I) para restaurar el inventario. Amigable con GC.
+     * @contexto Carga de partidas (Regla #7).
+     */
+    public fromJSON(json: string): void {
+        const datos = JSON.parse(json);
+        if (datos.nombre) this.nombre = datos.nombre;
+        if (datos.posicion) this.posicion = datos.posicion;
+        if (datos.inventario && Array.isArray(datos.inventario)) {
+            this.inventario.clear(); // Reutilizar el Map existente
+            for (const [tipo, cantidad] of datos.inventario) {
+                this.inventario.set(tipo as TipoBloque, cantidad);
+            }
+        }
+    }
 }

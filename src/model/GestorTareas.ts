@@ -1,12 +1,12 @@
 // src/model/GestorTareas.ts
-import {
-  ITarea,
-  EstadoTarea,
-  TipoTarea,
-  PrioridadTarea,
-  IPosicion3D,
-} from "./Tipos";
 import { Vec3 } from "../utils/Vector3";
+import {
+    EstadoTarea,
+    IPosicion3D,
+    ITarea,
+    PrioridadTarea,
+    TipoTarea,
+} from "./Tipos";
 
 export class GestorTareas {
   private cola: ITarea[] = [];
@@ -104,6 +104,32 @@ export class GestorTareas {
     if (index !== -1) {
       this.cola[index].estado = EstadoTarea.COMPLETADA;
       this.cola.splice(index, 1);
+    }
+  }
+
+  /**
+   * @description Serializa la cola de tareas a JSON.
+   * @performance O(T) donde T es el número de tareas en cola.
+   * @contexto Persistencia y serialización de mundo (Regla #7).
+   */
+  public toJSON(): string {
+    return JSON.stringify({ cola: this.cola });
+  }
+
+  /**
+   * @description Deserializa la cola de tareas desde JSON.
+   * @param {string} json - Cadena JSON.
+   * @performance O(T) de reconstrucción. Reasigna la cola evitando objetos intermedios.
+   * @contexto Persistencia y serialización de mundo (Regla #7).
+   */
+  public fromJSON(json: string): void {
+    try {
+      const datos = JSON.parse(json);
+      if (datos && Array.isArray(datos.cola)) {
+        this.cola = datos.cola;
+      }
+    } catch (error) {
+      console.error("[GESTOR-ERROR] Fallo crítico al deserializar las tareas.", error);
     }
   }
 }

@@ -6,6 +6,7 @@ import { LogicaMinera } from "./model/LogicaMinera";
 import { Almacen } from "./model/entities/Almacen";
 import { TipoBloque, TipoTarea, PrioridadTarea} from "./model/Tipos";
 import { GeneradorTerreno } from "./utils/GeneradorTerreno";
+import * as fs from "fs";
 
 const miMapa = new Mapa();
 
@@ -57,3 +58,8 @@ for (let i = 0; i < 1000; i++) {
 
 console.log(`--- Final del día ---`);
 console.log(`Estado de ${korg.nombre}: Hambre ${korg.necesidades.hambre}, Sed ${korg.necesidades.sed}, Salud ${korg.salud}`);
+
+// Simulación de Guardado de Partida al terminar
+console.log(`--- Guardando partida en disco ---`);
+fs.writeFileSync("savegame.json", motor.toJSON(), "utf-8");
+console.log(`💾 Partida guardada con éxito. Revisa el archivo 'savegame.json' en la raíz de tu proyecto.`);

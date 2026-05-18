@@ -21,7 +21,7 @@ export class Draconiano {
 
     readonly id: string;
 
-    private inventario: IInventario;
+    public inventario: IInventario;
     private progresoTrabajo: number = 0;
     private esfuerzoPorTick: number = 25; 
 
@@ -206,9 +206,29 @@ export class Draconiano {
         }
 
         const destino = this.tareaActual.posicion;
-        const distancia = Vec3.distancia(this.posicion, destino);
 
-        if (distancia < this.DISTANCIA_INTERACCION) {
+        // 1. FÍSICAS: GRAVEDAD (Verificamos el bloque justo debajo de los pies)
+        const xCentro = Math.round(this.posicion.x);
+        const yPies = Math.floor(this.posicion.y);
+        const zCentro = Math.round(this.posicion.z);
+
+        const bloqueAbajo = ctx.mapa.getBloque(xCentro, yPies - 1, zCentro);
+
+        // Si no hay suelo solido bajo los pies, caemos y no avanzamos horizontalmente
+        if(bloqueAbajo === TipoBloque.AIRE || bloqueAbajo === TipoBloque.AGUA) {
+            this.posicion.y -= this.velocidad; //Caida libre
+            // Redondeamos para evitar decimales infinitos en la consola
+            if(ctx.tickActual % 5 === 0) {
+                console.log(`[FÍSICAS] ${this.nombre} está cayendo (Y: ${this.posicion.y.toFixed(2)})...`);
+            }
+            return;
+        }
+
+        // 2. ALCANCE (Ya no intentamos fusionarnos con el bloque para picarlo)
+        const distancia = Vec3.distancia(this.posicion, destino);
+        const alcance = 1.5; //Distancia de los brazos del draconiano
+
+        if (distancia < alcance) {
             // LLEGAMOS AL DESTINO. ¿A QUÉ VENÍAMOS?
             if (this.tareaActual.tipo === TipoTarea.CONSUMIR) {
                 this.ejecutarConsumo(); // CRÍTICO: Paréntesis añadidos y nombre corregido
@@ -220,6 +240,25 @@ export class Draconiano {
             }
         } else {
             this.posicion = Vec3.hacia(this.posicion, destino, this.velocidad);
+        }
+
+        // 3. FÍSICAS: COLISIONES (Verificamos el bloque hacia el que caminamos)
+        const nuevaPos = Vec3.hacia(this.posicion, destino, this.velocidad);
+        const nextX = Math.round(nuevaPos.x);
+        const nextY = Math.floor(nuevaPos.y);
+        const nextZ = Math.round(nuevaPos.z);
+
+        const bloqueFuente = ctx.mapa.getBloque(nextX, nextY, nextZ);
+
+        // Solo avanzamos si el bloque de enfrente NO es sólido (Piedra o Muro)
+        if (bloqueFuente === TipoBloque.AIRE || bloqueFuente === TipoBloque.AGUA) {
+            this.posicion = nuevaPos;
+        } else {
+            // Chocamos con algo.
+            if (ctx.tickActual % 10 === 0) {
+                console.log(`[FÍSICAS] ${this.nombre} ha chocado de cara con un muro en X:${nextX}, Y:${nextY}, Z:${nextZ}`);
+            }
+        // Por ahora nos quedamos atascados (Issue #14 resolverá esto enseñándole a rodear)
         }
     }
 
@@ -405,5 +444,64 @@ export class Draconiano {
      */
     private morir(): void {
         console.log(`[💀] ${this.nombre} ha perecido en las minas. El valle cobra su tributo.`);
+    }
+
+    /**
+     * @description Serializa el estado metabólico, de IA y el inventario del Draconiano a JSON.
+     * @performance O(I) donde I son los items en la mochila. Creación de objeto plano temporal.
+     * @contexto Persistencia y guardado de partidas (Regla #7).
+     */
+    public toJSON(): string {
+        const estadoPlano = {
+            id: this.id,
+            nombre: this.nombre,
+            posicion: this.posicion,
+            necesidades: this.necesidades,
+            salud: this.salud,
+            estado: this.estado,
+            tareaActual: this.tareaActual,
+            progresoTrabajo: this.progresoTrabajo,
+            inventario: {
+                capacidadMax: this.inventario.capacidadMax,
+                cargaActual: this.inventario.cargaActual,
+                items: Array.from(this.inventario.items.entries()) // Map -> Array para serializar
+            }
+        };
+        return JSON.stringify(estadoPlano);
+    }
+
+    /**
+     * @description Restaura el estado de la entidad desde una cadena JSON, siendo respetuoso con el GC.
+     * @param {string} json - Cadena JSON del estado.
+     * @performance O(I) para restaurar el inventario. Reutiliza las referencias previas (Map).
+     * @contexto Carga de partidas salvadas (Regla #7).
+     */
+    public fromJSON(json: string): void {
+        try {
+            const datos = JSON.parse(json);
+            
+            // Restauración directa de propiedades primitivas y objetos básicos
+            if (datos.posicion) this.posicion = datos.posicion;
+            if (datos.necesidades) this.necesidades = datos.necesidades;
+            if (datos.salud !== undefined) this.salud = datos.salud;
+            if (datos.estado !== undefined) this.estado = datos.estado;
+            if (datos.tareaActual !== undefined) this.tareaActual = datos.tareaActual;
+            if (datos.progresoTrabajo !== undefined) this.progresoTrabajo = datos.progresoTrabajo;
+
+            // Restauración cuidadosa del Inventario (GC Friendly)
+            if (datos.inventario) {
+                this.inventario.capacidadMax = datos.inventario.capacidadMax ?? this.inventario.capacidadMax;
+                this.inventario.cargaActual = datos.inventario.cargaActual ?? this.inventario.cargaActual;
+                
+                if (Array.isArray(datos.inventario.items)) {
+                    this.inventario.items.clear(); // Limpiamos el Map existente sin destruirlo
+                    for (const [tipo, cantidad] of datos.inventario.items) {
+                        this.inventario.items.set(tipo as TipoBloque, cantidad);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error(`[ERROR] Fallo al deserializar el estado del draconiano ${this.nombre}.`, error);
+        }
     }
 }
