@@ -20,7 +20,7 @@ const korg = new Draconiano("d1", "Korg", 0, 1, 0); // Lo ponemos en Y:1 para qu
 const AlmC = new Almacen("Almacen", 0, 1, 0); // Ponemos el almacen tambien en superficie
 
 //Eliminamos el agua del Almacen y añadimos comida al almacen
-//AlmC.inventario.set(TipoBloque.AGUA,100);
+AlmC.inventario.set(TipoBloque.AGUA,100);
 AlmC.inventario.set(TipoBloque.COMIDA,100);
 
 //Añadimos tanto a Kong como el Almacen al motor
@@ -30,19 +30,30 @@ motor.añadirAlmacen(AlmC);
 // Modificicadores temporales para pruebas
 // korg.necesidades.descanso = 80; //Para probar descanso
 
-// Designamos un área gigante para que Korg tenga trabajo para toda su vida
-LogicaMinera.designarArea(motor.getGestor(), {x:0, y:0, z:0}, {x:10, y:-5, z:10});
+// --- DISEÑO DEL ESCENARIO DE PRUEBA (EL MURO) ---
 
-// Vamos a trampear un poco para las pruebas: 
-// Como el agua ahora es aleatoria, le aseguramos un pozo al lado del almacén para que no muera en los primeros ticks mientras prueba.
-miMapa.setBloque(2, 1, 0, TipoBloque.AGUA);
-motor.getGestor().añadirTarea(TipoTarea.RECOLECTAR, { x: 2, y: 1, z: 0 }, PrioridadTarea.Alta);
+// 1. Ponemos suelo sólido para que Korg no se caiga al vacío (Físicas Issue #13)
+for (let x = 0; x <= 5; x++) {
+    for (let z = 0; z <= 5; z++) {
+        miMapa.setBloque(x, 0, z, TipoBloque.PIEDRA);
+    }
+}
 
-// Le añadimos un tunel de tres bloques a picar
-LogicaMinera.designarArea(motor.getGestor(), {x:1,y:0,z:0}, {x:60,y:0,z:0})
+// 2. Construimos una Muralla en forma de "L" en Y=1 que bloquee el camino directo a X=4, Z=4
+miMapa.setBloque(2, 1, 1, TipoBloque.MURO_PIEDRA);
+miMapa.setBloque(2, 1, 2, TipoBloque.MURO_PIEDRA);
+miMapa.setBloque(2, 1, 3, TipoBloque.MURO_PIEDRA);
+miMapa.setBloque(3, 1, 3, TipoBloque.MURO_PIEDRA);
+miMapa.setBloque(4, 1, 3, TipoBloque.MURO_PIEDRA);
 
-// Añadimos una tarea de CONSTRUCCIÓN
-motor.getGestor().añadirTarea(TipoTarea.CONSTRUIR, { x: 5, y: 1, z: 0 }, PrioridadTarea.Alta);
+// 3. Ponemos un pozo de agua DETRÁS del muro
+miMapa.setBloque(4, 1, 4, TipoBloque.AGUA);
+
+// 4. Le mandamos a Korg ir a por el agua
+motor.getGestor().añadirTarea(TipoTarea.RECOLECTAR, { x: 4, y: 1, z: 4 }, PrioridadTarea.Alta);
+
+// 5. Le damos trabajo extra para que no se quede de brazos cruzados tras coger el agua (Prioridad Media)
+LogicaMinera.designarArea(motor.getGestor(), { x: 5, y: 1, z: 5 }, { x: 7, y: 1, z: 7 });
 
 // Mensaje de bienvenida
 console.log(`--- 🏔️ Bienvenido a la Montaña de 200k, ${korg.nombre} ---`);

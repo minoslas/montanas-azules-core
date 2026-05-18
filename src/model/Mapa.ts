@@ -18,27 +18,28 @@ export class Mapa {
   }
 
   /**
-   * @description Devuelve el bloque de esa coordenada. Si no existe en el Map, asume PIEDRA sólida.
+   * @description Devuelve el bloque de esa coordenada. Asume AIRE en superficie (Y>0) y PIEDRA en subsuelo.
    * @performance O(1) lectura de HashMap.
    * @contexto Estructuras Sparse (Regla de Memoria #2).
    */
   public getBloque(x: number, y: number, z: number): TipoBloque {
     const clave = this.generarClave(x, y, z);
-    return this.celdas.get(clave) ?? TipoBloque.PIEDRA;
+    // LA REGLA DEL HORIZONTE: Si estamos por encima de Y=0, el vacío es AIRE. Si no, es PIEDRA.
+    const bloquePorDefecto = y > 0 ? TipoBloque.AIRE : TipoBloque.PIEDRA;
+    return this.celdas.get(clave) ?? bloquePorDefecto;
   }
 
   /**
-   * @description Reemplaza un Voxel. Borra la clave si es PIEDRA o AIRE para conservar RAM.
+   * @description Reemplaza un Voxel. Borra la clave si coincide con el bloque por defecto para conservar RAM.
    * @performance O(1) en inserción o borrado en el Map principal.
    * @contexto Limpieza Proactiva (GC Friendly - Regla #2).
    */
   public setBloque(x: number, y: number, z: number, tipo: TipoBloque): void {
     const clave = this.generarClave(x, y, z);
+    const bloquePorDefecto = y > 0 ? TipoBloque.AIRE : TipoBloque.PIEDRA;
 
-    // Optimización (GC Friendly): Si el bloque es AIRE o PIEDRA (el estado por defecto),
-    // lo eliminamos del Map para liberar memoria. getBloque() ya asume PIEDRA
-    // si la clave no existe, cumpliendo la regla del Sparse Grid.
-    if (tipo === TipoBloque.PIEDRA || tipo === TipoBloque.AIRE) {
+    // Optimización: Solo guardamos en memoria aquello que rompe la regla del horizonte
+    if (tipo === bloquePorDefecto) {
       this.celdas.delete(clave);
     } else {
       this.celdas.set(clave, tipo);
