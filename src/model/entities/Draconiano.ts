@@ -1,8 +1,7 @@
-import { IContextoSimulacion, EstadoIA, ITarea, IInventario, TipoBloque, TipoTarea, INecesidades, IPosicion3D } from "../Tipos";
+import { Pathfinder } from "../../utils/Pathfinder";
 import { Vec3 } from "../../utils/Vector3";
 import { GestorTareas } from "../GestorTareas";
-import { Mapa } from "../Mapa";
-import { Pathfinder } from "../../utils/Pathfinder";
+import { EstadoIA, IContextoSimulacion, IInventario, INecesidades, IPosicion3D, ITarea, TipoBloque, TipoTarea } from "../Tipos";
 
 /**
  * @description Entidad principal que representa a un habitante de la colonia. Se basa en una máquina de estados (FSM).
@@ -18,7 +17,7 @@ export class Draconiano {
     private readonly DANO_INANICION = 1.0;
     private readonly RECUPERACION_SUENO = 2.0;
     private readonly CURACION_PASIVA = 10;
-    private readonly DISTANCIA_INTERACCION = 0.2;
+    private readonly DISTANCIA_INTERACCION = 1.9; // FIX REGLA #6: Refleja la tolerancia real de pathfinding
 
     readonly id: string;
 
@@ -218,15 +217,21 @@ export class Draconiano {
         const xCentro = Math.round(this.posicion.x);
         const yPies = Math.floor(this.posicion.y);
         const zCentro = Math.round(this.posicion.z);
-        if (ctx.mapa.getBloque(xCentro, yPies - 1, zCentro) === TipoBloque.AIRE) {
+        
+        const bloqueAbajo = ctx.mapa.getBloque(xCentro, yPies - 1, zCentro);
+        
+        if (bloqueAbajo === TipoBloque.AIRE || bloqueAbajo === TipoBloque.AGUA) {
             this.posicion.y -= this.velocidad; 
-            this.rutaActual = null; // Al caer nos salimos de la ruta prevista
+            this.rutaActual = null; 
             return; 
+        } else if (this.posicion.y > yPies) {
+            // FIX DE FÍSICAS: Si hay suelo sólido pero flotamos por los decimales (ej. Y=1.5), encajamos los pies al suelo.
+            this.posicion.y = yPies;
         }
 
         // CONTROL DE LLEGADA: ¿Estamos lo suficientemente cerca de la tarea?
-        // FIX: Tolerancia subida a 1.9 para compensar el margen flotante del pathfinding.
-        if (Vec3.distancia(this.posicion, destino) <= 1.9) {
+        // FIX: Eliminado número mágico, usamos la constante de la clase
+        if (Vec3.distancia(this.posicion, destino) <= this.DISTANCIA_INTERACCION) {
             this.rutaActual = null;
             if (this.tareaActual.tipo === TipoTarea.CONSUMIR) this.ejecutarConsumo(); 
             else if (this.tareaActual.tipo === TipoTarea.DEPOSITAR) this.ejecutarDescarga(ctx); 
@@ -256,8 +261,14 @@ export class Draconiano {
         if (Vec3.distanciaCuadrada(this.posicion, siguientePunto) < 0.1) {
             this.rutaActual.shift(); // Quitamos el nodo alcanzado
         } else {
-            // Caminamos hacia el nodo intermedio
-            this.posicion = Vec3.hacia(this.posicion, siguientePunto, this.velocidad);
+            // FIX GC FRIENDLY: Mutamos la posición en lugar de crear un objeto literal por tick (Regla #2)
+            Vec3.moverHacia(this.posicion, siguientePunto, this.velocidad);
+
+            // NUEVO: Telemetría individual de movimiento. 
+            // (Usamos % 5 para que no colapse la consola con demasiados mensajes)
+            if (ctx.tickActual % 5 === 0) {
+                console.log(`[MOVIMIENTO] 👣 ${this.nombre} camina por X:${this.posicion.x.toFixed(1)}, Z:${this.posicion.z.toFixed(1)} hacia su objetivo.`);
+            }
         }
     }
 

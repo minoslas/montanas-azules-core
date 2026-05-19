@@ -1,18 +1,21 @@
-import { Mapa } from "../model/Mapa";
+import { Almacen } from "../model/entities/Almacen";
 import { Draconiano } from "../model/entities/Draconiano";
 import { GestorTareas } from "../model/GestorTareas";
-import { Almacen } from "../model/entities/Almacen";
+import { Mapa } from "../model/Mapa";
 import {
-  IContextoSimulacion,
-  TipoTarea,
-  PrioridadTarea,
-  EstadoTarea,
-  EstadoIA,
-  TipoBloque,
+    EstadoIA,
+    EstadoTarea,
+    IContextoSimulacion,
+    PrioridadTarea,
+    TipoBloque,
+    TipoTarea,
 } from "../model/Tipos";
 import { Vec3 } from "../utils/Vector3";
 
 export class Simulador {
+  // --- CONSTANTES DE BALANCEO (Regla #6) ---
+  private readonly COSTE_RECLUTAMIENTO = 50;
+
   private tickActual: number = 0;
   private mapa: Mapa;
   private entidades: Draconiano[] = [];
@@ -33,11 +36,62 @@ export class Simulador {
     };
   }
 
+  /**
+   * @description Registra un nuevo habitante en el ciclo de actualización del motor.
+   * @param {Draconiano} d - Instancia del trabajador.
+   * @performance O(1) push al array denso.
+   * @contexto Inicialización y crecimiento de la colonia.
+   */
   public añadirDraconiano(d: Draconiano): void {
     this.entidades.push(d);
   }
+
+  /**
+   * @description Registra un nuevo almacén físico en el mundo.
+   * @param {Almacen} a - Instancia del almacén.
+   * @performance O(1) push al array denso.
+   * @contexto Logística e inicialización.
+   */
   public añadirAlmacen(a: Almacen): void {
     this.almacenes.push(a);
+  }
+
+  /**
+   * @description Consume recursos del almacén principal para invocar a un nuevo trabajador.
+   * @param {string} nombreAlmacen - El nombre del almacén de donde sacar la comida.
+   * @contexto Crecimiento de colonia (Issue #15).
+   */
+  public intentarReclutar(nombreAlmacen: string): void {
+      const almacen = this.almacenes.find(a => a.nombre === nombreAlmacen);
+      if (!almacen) {
+          console.warn(`[COLONIA] Almacén '${nombreAlmacen}' no encontrado.`);
+          return;
+      }
+
+      const comidaActual = almacen.inventario.get(TipoBloque.COMIDA) || 0;
+
+      if (comidaActual >= this.COSTE_RECLUTAMIENTO) {
+          // Cobramos la comida
+          almacen.inventario.set(TipoBloque.COMIDA, comidaActual - this.COSTE_RECLUTAMIENTO);
+          
+          // Calculamos el ID y nombre del nuevo colono
+          const nuevoId = `d${this.entidades.length + 1}`;
+          const nuevoNombre = `Clon-${this.entidades.length}`;
+          
+          // Creamos al nuevo clon (aparece encima del almacén)
+          const nuevoDraconiano = new Draconiano(
+              nuevoId, 
+              nuevoNombre, 
+              almacen.posicion.x, 
+              almacen.posicion.y + 1, // FIX: Aparece justo encima del almacén (+1 en el eje Y)
+              almacen.posicion.z
+          );
+
+          this.añadirDraconiano(nuevoDraconiano);
+          console.log(`[COLONIA] ¡Ha nacido ${nuevoNombre}! Ha costado ${this.COSTE_RECLUTAMIENTO} de COMIDA. Quedan ${comidaActual - this.COSTE_RECLUTAMIENTO} en ${nombreAlmacen}.`);
+      } else {
+          console.warn(`[COLONIA] No hay suficiente comida para reclutar. Se necesitan ${this.COSTE_RECLUTAMIENTO}, hay ${comidaActual}.`);
+      }
   }
 
   /**
@@ -159,8 +213,20 @@ export class Simulador {
     );
   }
 
+  /**
+   * @description Proporciona acceso al tablón de tareas.
+   * @performance O(1).
+   */
   public getGestor(): GestorTareas {
     return this.gestorTareas;
+  }
+
+  /**
+   * @description Permite observar la lista de entidades actuales en el motor.
+   * @performance O(1).
+   */
+  public getEntidades(): Draconiano[] {
+      return this.entidades;
   }
 
   /**
@@ -169,16 +235,13 @@ export class Simulador {
    * @contexto Persistencia centralizada de la partida (Regla #7).
    */
   public toJSON(): string {
-    const estadoGlobal = {
-      tickActual: this.tickActual,
-      pausado: this.pausado,
-      gestorTareas: JSON.parse(this.gestorTareas.toJSON()), // Parseamos para anidarlo limpiamente
-      // NOTA: Para almacenar entidades y almacenes delegamos en sus propios métodos toJSON.
-      // Como devuelven string, los parseamos para construir un único gran árbol JSON.
-      entidades: this.entidades.map(e => JSON.parse(e.toJSON())),
-      almacenes: this.almacenes.map(a => JSON.parse(a.toJSON())) 
-    };
-    return JSON.stringify(estadoGlobal);
+    // FIX GC FRIENDLY: Construimos la cadena JSON directamente para evitar dobles parseos
+    // y no generar objetos literales anónimos masivos en RAM.
+    const gestorJSON = this.gestorTareas.toJSON();
+    const entidadesJSON = this.entidades.map(e => e.toJSON()).join(",");
+    const almacenesJSON = this.almacenes.map(a => a.toJSON()).join(",");
+
+    return `{"tickActual":${this.tickActual},"pausado":${this.pausado},"gestorTareas":${gestorJSON},"entidades":[${entidadesJSON}],"almacenes":[${almacenesJSON}]}`;
   }
 
   /**

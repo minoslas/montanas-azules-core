@@ -14,6 +14,10 @@ class Nodo {
 }
 
 export class Pathfinder {
+    // FIX GC: Constantes estáticas para evitar instanciar arrays en cada llamada (Regla #2)
+    private static readonly DIRS = [ {x:1, z:0}, {x:-1, z:0}, {x:0, z:1}, {x:0, z:-1} ];
+    private static readonly SALTOS_Y = [0, -1, 1];
+
     /**
      * @description Encuentra el camino más corto esquivando obstáculos y respetando desniveles (1 bloque de altura).
      * @performance O(N log N) con límite de iteraciones.
@@ -28,9 +32,6 @@ export class Pathfinder {
 
         let iteraciones = 0;
         const MAX_ITERACIONES = 500; // Evita bloqueos de CPU si no hay salida
-
-        // Direcciones cardinales (N, S, E, W)
-        const dirs = [ {x:1, z:0}, {x:-1, z:0}, {x:0, z:1}, {x:0, z:-1} ];
 
         while (abiertas.length > 0 && iteraciones < MAX_ITERACIONES) {
             iteraciones++;
@@ -53,12 +54,12 @@ export class Pathfinder {
             }
 
             // Explorar vecinos
-            for (const dir of dirs) {
+            for (const dir of Pathfinder.DIRS) {
                 const nx = actual.x + dir.x;
                 const nz = actual.z + dir.z;
 
                 // Verificamos alturas posibles (mismo nivel, bajar 1, o subir 1 escalón)
-                for (const dy of [0, -1, 1]) {
+                for (const dy of Pathfinder.SALTOS_Y) {
                     const ny = actual.y + dy;
                     const idVecino = `${nx},${ny},${nz}`;
 

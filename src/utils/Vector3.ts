@@ -34,6 +34,26 @@ export class Vec3 {
     }
 
     /**
+     * @description Modifica el punto origen hacia el objetivo sin crear nuevos objetos en memoria.
+     * @param {IPosicion3D} actual - Origen que será mutado (GC Friendly).
+     * @param {IPosicion3D} destino - El destino al que tendemos.
+     * @param {number} velocidad - Multiplicador de escala.
+     * @performance O(1). No activa el Garbage Collector. Regla #2.
+     */
+    static moverHacia(actual: IPosicion3D, destino: IPosicion3D, velocidad: number): void {
+        const d = this.distancia(actual, destino);
+        if (d < 0.1) {
+            actual.x = destino.x;
+            actual.y = destino.y;
+            actual.z = destino.z;
+            return;
+        }
+        actual.x += ((destino.x - actual.x) / d) * velocidad;
+        actual.y += ((destino.y - actual.y) / d) * velocidad;
+        actual.z += ((destino.z - actual.z) / d) * velocidad;
+    }
+
+    /**
      * @description Calcula la distancia al cuadrado entre dos puntos, evitando la costosa raíz cuadrada.
      * @param {IPosicion3D} a - Inicio
      * @param {IPosicion3D} b - Fin

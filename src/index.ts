@@ -16,26 +16,38 @@ GeneradorTerreno.generarMontaña(miMapa, 100, 100, 20);
 const motor = new Simulador(miMapa);
 
 // Creamos a nuestro primer habitante
-const korg = new Draconiano("d1", "Korg", 0, 1, 0); // Lo ponemos en Y:1 para que pise la superficie
+const Drac = new Draconiano("d1", "Korg", 0, 1, 0); // Lo ponemos en Y:1 para que pise la superficie
 const AlmC = new Almacen("Almacen", 0, 1, 0); // Ponemos el almacen tambien en superficie
+const NumD = 5; // Número de draconianos
 
-//Eliminamos el agua del Almacen y añadimos comida al almacen
-AlmC.inventario.set(TipoBloque.AGUA,100);
-AlmC.inventario.set(TipoBloque.COMIDA,100);
+//Inicializamos el Almacen y añadimos comida al almacen (añado un extra por si acaso)
+AlmC.inventario.set(TipoBloque.AGUA,1000);
+AlmC.inventario.set(TipoBloque.COMIDA,1000);
 
 //Añadimos tanto a Kong como el Almacen al motor
-motor.añadirDraconiano(korg);
+motor.añadirDraconiano(Drac);
 motor.añadirAlmacen(AlmC);
 
-// Modificicadores temporales para pruebas
-// korg.necesidades.descanso = 80; //Para probar descanso
+// NUEVO: Korg necesita ayuda. Vamos a reclutar a sus hermanos consumiendo comida, ahora es mas organico.
+for(let i = 0; i < NumD; i++) {
+    motor.intentarReclutar("Almacen")
+}
 
-// --- DISEÑO DEL ESCENARIO DE PRUEBA (EL MURO) ---
-
-// 1. Ponemos suelo sólido para que Korg no se caiga al vacío (Físicas Issue #13)
+// 3. Suelo sólido de seguridad
 for (let x = 0; x <= 5; x++) {
     for (let z = 0; z <= 5; z++) {
         miMapa.setBloque(x, 0, z, TipoBloque.PIEDRA);
+    }
+}
+
+// --- DISEÑO DEL ESCENARIO DE PRUEBA (EL MURO) ---
+
+// 1. CREAMOS UNA MONTAÑA EN LA SUPERFICIE (Y:1 y Y:2)
+for (let x = 3; x <= 7; x++) {
+    for (let y = 1; y <= 2; y++) {
+        for (let z = 3; z <= 7; z++) {
+            miMapa.setBloque(x, y, z, TipoBloque.PIEDRA);
+        }
     }
 }
 
@@ -47,28 +59,34 @@ miMapa.setBloque(3, 1, 3, TipoBloque.MURO_PIEDRA);
 miMapa.setBloque(4, 1, 3, TipoBloque.MURO_PIEDRA);
 
 // 3. Ponemos un pozo de agua DETRÁS del muro
-miMapa.setBloque(4, 1, 4, TipoBloque.AGUA);
+miMapa.setBloque(4, 0, 4, TipoBloque.AGUA);
 
 // 4. Le mandamos a Korg ir a por el agua
-motor.getGestor().añadirTarea(TipoTarea.RECOLECTAR, { x: 4, y: 1, z: 4 }, PrioridadTarea.Alta);
+motor.getGestor().añadirTarea(TipoTarea.RECOLECTAR, { x: 4, y: 0, z: 4 }, PrioridadTarea.Alta);
 
-// 5. Le damos trabajo extra para que no se quede de brazos cruzados tras coger el agua (Prioridad Media)
-LogicaMinera.designarArea(motor.getGestor(), { x: 5, y: 1, z: 5 }, { x: 7, y: 1, z: 7 });
+// 5. ¡TRABAJO REAL! Les mandamos a demoler la montaña que acabamos de crear
+LogicaMinera.designarArea(motor.getGestor(), { x: 3, y: 1, z: 3 }, { x: 7, y: 2, z: 7 })
 
 // Mensaje de bienvenida
-console.log(`--- 🏔️ Bienvenido a la Montaña de 200k, ${korg.nombre} ---`);
+console.log(`--- 🏔️ Bienvenido a la Cantera, ${Drac.nombre} y compañía ---`);
 
-// Simulamos suficientes ticks para que se pueda completar la tarea (Korg empezará a tener hambre tras el tick 160 aprox)
-// Cada bloque tardará 4 Ticks (25 progresos por Tick) + el movimiento (unos 100)
-for (let i = 0; i < 1000; i++) {
+// Simulamos los 1000 ticks, pero ahora vigilamos a TODA la cuadrilla
+for (let i = 0; i < 250; i++) {
     motor.procesarTick();
-    if(i % 5 === 0) {
-    console.log(`Tick ${i} | Korg está en: X=${korg.posicion.x.toFixed(1)} | Tarea: ${korg.estado}`);
+    
+    // Imprimimos un reporte general cada 10 ticks
+    if(i % 10 === 0) {
+        console.log(`\n--- ⏱️ Tick ${i} ---`);
+        motor.getEntidades().forEach(entidad => {
+            console.log(`👷 ${entidad.nombre.padEnd(8)} | Estado: ${entidad.estado} | Pos: X=${entidad.posicion.x.toFixed(1)}, Z=${entidad.posicion.z.toFixed(1)} | Mochila: ${entidad.getCargaActual()}/10`);
+        });
     }
 }
 
 console.log(`--- Final del día ---`);
-console.log(`Estado de ${korg.nombre}: Hambre ${korg.necesidades.hambre}, Sed ${korg.necesidades.sed}, Salud ${korg.salud}`);
+motor.getEntidades().forEach(entidad => {
+    console.log(`👷 ${entidad.nombre.padEnd(8)} | Estado: ${entidad.estado} | Salud: ${entidad.salud.toFixed(1)} | Mochila: ${entidad.getCargaActual()}/10`);
+});
 
 // Simulación de Guardado de Partida al terminar
 console.log(`--- Guardando partida en disco ---`);
