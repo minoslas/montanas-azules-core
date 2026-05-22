@@ -1,0 +1,11 @@
+{
+  "general": {
+    "previewFeatures": true
+  },
+  "ui": {
+    "preferredEditor": "vscode"
+  },
+  "workspace": {
+    "enableContextAwareness": true
+  }
+}

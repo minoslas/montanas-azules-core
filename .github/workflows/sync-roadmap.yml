@@ -1,0 +1,46 @@
+name: Sincronizar Roadmap con Issues
+
+# Se ejecuta cada vez que hay un cambio en los issues
+on:
+  issues:
+    types: [opened, edited, closed, reopened, deleted]
+
+# Permisos para que el bot pueda hacer commit en el repositorio
+permissions:
+  contents: write
+
+jobs:
+  actualizar-roadmap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Generar nuevo roadmap.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "# 🗺️ Hoja de Ruta Automática - Montañas Azules" > .gemini/roadmap.md
+          echo "" >> .gemini/roadmap.md
+          echo "*(Este documento se autogenera desde los Issues de GitHub. No editar a mano).* " >> .gemini/roadmap.md
+          echo "" >> .gemini/roadmap.md
+          
+          # Extraer títulos de los Milestones activos
+          MILESTONES=$(gh api repos/${{ github.repository }}/milestones --jq '.[].title')
+          
+          echo "$MILESTONES" | while IFS= read -r titulo; do
+            if [ -n "$titulo" ]; then
+              echo "## 🎯 $titulo" >> .gemini/roadmap.md
+              gh issue list --state open --milestone "$titulo" --json number,title --jq '.[] | "- [ ] **Issue #\(.number)**: \(.title)"' >> .gemini/roadmap.md
+              gh issue list --state closed --milestone "$titulo" --json number,title --jq '.[] | "- [x] **Issue #\(.number)**: \(.title)"' >> .gemini/roadmap.md
+              echo "" >> .gemini/roadmap.md
+            fi
+          done
+
+      - name: Commit y Push de los cambios
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .gemini/roadmap.md
+          git commit -m "docs: 🤖 Auto-actualizar roadmap.md desde GitHub Issues" || exit 0
+          git push

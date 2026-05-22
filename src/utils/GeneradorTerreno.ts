@@ -29,9 +29,9 @@ export class GeneradorTerreno {
                     if (esAgua) {
                         mapa.setBloque(x, y, z, TipoBloque.AGUA);
                         vetasAgua++;
-                    } else {
-                        mapa.setBloque(x, y, z, TipoBloque.PIEDRA);
                     }
+                    // REGLA #4 (.gemini): No guardamos PIEDRA en memoria si Y <= 0.
+                    // El objeto Mapa debe inferir que todo lo no registrado en Y <= 0 es PIEDRA.
                     
                     bloquesGenerados++;
                 }

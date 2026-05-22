@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test-logic": "npx tsc && node dist/index.js",
+    "start": "ts-node src/index.ts",
+    "dev": "vite",
     "build": "tsc"
   },
   "repository": {
@@ -20,7 +22,8 @@
   },
   "homepage": "https://github.com/minoslas/montanas-azules-core#readme",
   "devDependencies": {
-    "@types/node": "^25.8.0",
-    "typescript": "^6.0.3"
+    "@types/node": "25.8.0",
+    "typescript": "6.0.3",
+    "vite": "5.2.0"
   }
 }

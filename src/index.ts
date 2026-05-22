@@ -1,12 +1,12 @@
 // src/index.ts (Actualizado)
-import { Mapa } from "./model/Mapa";
+import * as fs from "fs";
 import { Simulador } from "./controller/Simulador";
+import { Almacen } from "./model/entities/Almacen";
 import { Draconiano } from "./model/entities/Draconiano";
 import { LogicaMinera } from "./model/LogicaMinera";
-import { Almacen } from "./model/entities/Almacen";
-import { TipoBloque, TipoTarea, PrioridadTarea} from "./model/Tipos";
+import { Mapa } from "./model/Mapa";
+import { PrioridadTarea, TipoBloque, TipoTarea } from "./model/Tipos";
 import { GeneradorTerreno } from "./utils/GeneradorTerreno";
-import * as fs from "fs";
 
 const miMapa = new Mapa();
 
@@ -31,13 +31,6 @@ motor.añadirAlmacen(AlmC);
 // NUEVO: Korg necesita ayuda. Vamos a reclutar a sus hermanos consumiendo comida, ahora es mas organico.
 for(let i = 0; i < NumD; i++) {
     motor.intentarReclutar("Almacen")
-}
-
-// 3. Suelo sólido de seguridad
-for (let x = 0; x <= 5; x++) {
-    for (let z = 0; z <= 5; z++) {
-        miMapa.setBloque(x, 0, z, TipoBloque.PIEDRA);
-    }
 }
 
 // --- DISEÑO DEL ESCENARIO DE PRUEBA (EL MURO) ---

@@ -21,11 +21,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20' # Usamos una versión estable y moderna
-          cache: 'npm'
+
+      - name: Instalar pnpm
+        run: npm install -g pnpm
 
       # 3. Instala las dependencias (TypeScript, etc.)
       - name: Instalar dependencias
-        run: npm install
+        run: pnpm install --ignore-scripts
 
       # 4. Compila el proyecto (Busca errores de sintaxis o tipos)
       - name: Compilar TypeScript
