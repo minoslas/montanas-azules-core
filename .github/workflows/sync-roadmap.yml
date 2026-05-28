@@ -1,9 +1,12 @@
 name: Sincronizar Roadmap con Issues
 
-# Se ejecuta cada vez que hay un cambio en los issues
+# Se ejecuta cada vez que hay un cambio en los issues, al hacer push a cualquier rama, o de forma manual
 on:
   issues:
     types: [opened, edited, closed, reopened, deleted]
+  push:
+    branches: [ "**" ]
+  workflow_dispatch:
 
 # Permisos para que el bot pueda hacer commit en el repositorio
 permissions:
