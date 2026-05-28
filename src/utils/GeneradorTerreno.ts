@@ -3,6 +3,9 @@ import { Mapa } from "../model/Mapa";
 import { TipoBloque } from "../model/Tipos";
 
 export class GeneradorTerreno {
+    // --- CONSTANTES DE BALANCEO (Regla #6) ---
+    private static readonly PROBABILIDAD_AGUA = 0.02;
+
     /**
      * @description Genera un volumen de terreno procedural inyectándolo en el mapa proporcionado.
      * @param {Mapa} mapa - La instancia del mapa a poblar.
@@ -23,8 +26,8 @@ export class GeneradorTerreno {
                 for (let y = 0; y >= -altoY; y--) {
                     
                     // Lógica Procedural Básica (Ruido Blanco controlado)
-                    // Damos un 2% de probabilidad de que el bloque sea un manantial de agua si está bajo tierra
-                    const esAgua = (y < 0) && (Math.random() < 0.02);
+                    // Utilizamos la constante para determinar la probabilidad de que el bloque sea un manantial
+                    const esAgua = (y < 0) && (Math.random() < GeneradorTerreno.PROBABILIDAD_AGUA);
 
                     if (esAgua) {
                         mapa.setBloque(x, y, z, TipoBloque.AGUA);

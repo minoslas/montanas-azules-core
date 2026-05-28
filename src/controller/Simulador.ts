@@ -106,7 +106,8 @@ export class Simulador {
     // Regla #2: Reutilizar instancia para no saturar el GC
     this.contextoGlobal.tickActual = this.tickActual;
 
-    this.entidades.forEach((entidad) => {
+    // FIX GC Friendly: Evitamos .forEach para no crear un callback temporal por cada tick
+    for (const entidad of this.entidades) {
       if (!entidad.estaVivo()) return;
 
       // PRIORIZAR SUPERVIVENCIA: Si está con hambre, se forzará a ir a COMER
@@ -125,7 +126,7 @@ export class Simulador {
       }
 
       entidad.actualizar(this.contextoGlobal);
-    });
+    }
   }
 
   /**

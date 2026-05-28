@@ -55,6 +55,29 @@ export class Mapa {
   }
 
   /**
+   * @description Extrae las posiciones de todos los bloques modificados en el mapa.
+   * @performance O(N) donde N es el número de bloques que rompen la regla del horizonte.
+   * @contexto Puente de lectura de datos para la Vista (Issue #17).
+   */
+  public obtenerTodosLosBloquesValidos(): { x: number, y: number, z: number, tipo: TipoBloque }[] {
+    const resultado: { x: number, y: number, z: number, tipo: TipoBloque }[] = [];
+    
+    for (const [clave, tipo] of this.celdas.entries()) {
+      // Ignoramos el aire por si acaso
+      if (tipo !== TipoBloque.AIRE) {
+        const coords = clave.split(",");
+        resultado.push({
+          x: parseInt(coords[0], 10),
+          y: parseInt(coords[1], 10),
+          z: parseInt(coords[2], 10),
+          tipo: tipo
+        });
+      }
+    }
+    return resultado;
+  }
+
+  /**
    * @description Serializa el estado actual del Sparse Voxel Grid a una cadena JSON.
    * @performance O(N) donde N es la cantidad de bloques modificados. Crea un array intermedio temporal.
    * @contexto Persistencia y serialización de mundo (Regla #7).

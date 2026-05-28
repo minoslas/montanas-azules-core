@@ -344,6 +344,7 @@ export class Draconiano {
      /**
      * @description Extrae un bloque de Agua/Recurso y lo guarda en el Inventario.
      * @param {IContextoSimulacion} ctx - Contexto inyectado de la simulación.
+     * @performance O(1). Acceso y mutación en el Map sin estructuras pesadas.
      * @contexto Recoleccion de recursos naturales (agua en este caso) (Issue #11).
      */
     private finalizarRecoleccion(ctx: IContextoSimulacion) {

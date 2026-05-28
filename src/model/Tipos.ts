@@ -17,6 +17,7 @@ export enum TipoBloque {
   MINERAL = "MINERAL",
   OBJETO = "OBJETO",
   MURO_PIEDRA = "MURO_PIEDRA", //Issue #9
+  MADERA = "MADERA",
 }
 
 export enum TipoTarea {

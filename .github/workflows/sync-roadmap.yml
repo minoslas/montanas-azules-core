@@ -8,6 +8,7 @@ on:
 # Permisos para que el bot pueda hacer commit en el repositorio
 permissions:
   contents: write
+  issues: read
 
 jobs:
   actualizar-roadmap:

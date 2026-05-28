@@ -3,25 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Montañas Azules - Vista 2D</title>
+    <title>Montañas Azules - Motor Gráfico</title>
     <style>
         body { 
             margin: 0; 
-            background-color: #1e1e1e; 
+            background-color: #121212; /* Fondo aún más oscuro para el exterior */
             display: flex; 
             justify-content: center; 
             align-items: center; 
             height: 100vh; 
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
+
+        /* Contenedor principal que agrupa el juego y el menú */
+        #contenedor-juego {
+            display: flex;
+            flex-direction: row;
+            background-color: #1e1e1e;
+            border: 2px solid #444;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            border-radius: 8px;
+            overflow: hidden; /* Para que las esquinas redondeadas apliquen a todo */
+        }
+
+        /* El Ojo de la simulación */
         canvas { 
-            border: 2px solid #555; 
             background-color: #000; 
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            /* Quitamos el borde porque ahora lo tiene el contenedor padre */
         }
+
+        /* El nuevo Panel de Control Derecho */
+        #panel-lateral {
+            width: 300px;
+            background-color: #2a2a2a;
+            border-left: 2px solid #444;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Secciones dentro del panel */
+        .seccion-panel {
+            padding: 15px;
+            border-bottom: 1px solid #444;
+        }
+
+        .titulo-seccion {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #FFD700; /* Dorado para destacar */
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Caja de registro de mensajes (Log) */
+        #caja-mensajes {
+            flex-grow: 1; /* Ocupa el resto del espacio disponible */
+            padding: 15px;
+            overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+            color: #ccc;
+            background-color: #1a1a1a;
+        }
+
+        .mensaje { margin-bottom: 5px; }
+        .mensaje.alerta { color: #ff4444; }
+        .mensaje.info { color: #44ff44; }
     </style>
 </head>
 <body>
-    <canvas id="lienzoJuego" width="800" height="600"></canvas>
+
+    <div id="contenedor-juego">
+        <canvas id="lienzoJuego" width="800" height="600"></canvas>
+        
+        <div id="panel-lateral">
+            
+            <div class="seccion-panel">
+                <h3 class="titulo-seccion">Colonia</h3>
+                <div>Población: <span id="ui-poblacion">6</span> Draconianos</div>
+                <div>Estado: <span style="color: #44ff44;">Activo</span></div>
+            </div>
+
+            <div class="seccion-panel">
+                <h3 class="titulo-seccion">Almacén Principal</h3>
+                <div>Agua: <span id="ui-agua">1000</span></div>
+                <div>Comida: <span id="ui-comida">1000</span></div>
+                <div>Piedra: <span id="ui-piedra">0</span></div>
+            </div>
+
+            <div class="seccion-panel">
+                <h3 class="titulo-seccion">Controles</h3>
+                <div style="font-size: 12px; color: #888;">
+                    [ R ] - Reiniciar Simulación<br>
+                    (Más controles en construcción)
+                </div>
+            </div>
+
+            <div id="caja-mensajes">
+                <div class="mensaje info">> Sistema en línea.</div>
+                <div class="mensaje">> Cuadrilla minera desplegada.</div>
+            </div>
+
+        </div>
+    </div>
+    
     <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
