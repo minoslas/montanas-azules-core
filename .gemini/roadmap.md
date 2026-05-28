@@ -1,21 +1,15 @@
-# 🗺️ Hoja de Ruta - Montañas Azules
+# 🗺️ Hoja de Ruta Automática - Montañas Azules
 
-Este documento ayuda a la IA a entender el contexto actual y los objetivos a corto/medio plazo de la simulación.
-Está sincronizado manualmente con los Milestones de GitHub.
+*(Este documento se autogenera desde los Issues de GitHub. No editar a mano).* 
 
-## 🎯 Milestone #1: Motor Core, Metabolismo y Físicas
+## 🎯 M4: Físicas y Navegación (A*)
+- [x] **Issue #14**: [IA/PATHFINDING] Algoritmo de Navegación A* #14
+- [x] **Issue #13**: [FÍSICAS] Gravedad y Colisiones Base #13
 
-- [x] **Issue #9**: Lógica de Albañilería Básica (Construcción de Muros).
-- [x] **Issue #10**: Sistema de fatiga y descanso (Dormir).
-- [ ] **Issue #11**: Recolección de agua y agotamiento de manantiales (Mecánica de sed completa).
-- [ ] **Issue #12**: Generación procedural del mundo base.
-- [ ] **Issue #13**: Creación de un entorno de testing ultra-ligero con `node:test` para asegurar el Modelo.
+## 🎯 M5: Gestión de Colonia y Concurrencia
+- [x] **Issue #15**: [COLONIA] Reclutamiento y Crecimiento de Población #15
 
-## 🚀 Milestone #2: Lógica de IA Avanzada y Pathfinding
+## 🎯 M6: Motor Gráfico Web (Vista 2D)
+- [ ] **Issue #17**: [CONTROLADOR] Sincronización Modelo-Vista (Render Loop) #17
+- [x] **Issue #16**: [VISTA] Infraestructura Web y Render Canvas 2D #16
 
-- **Issue #14**: Optimización del Pathfinder (A\*) frente a obstáculos dinámicos.
-- **Issue #15**: Sistema de combate, patrullaje y defensa de la colonia.
-
-## 🌌 Milestone #3: Integración de la Vista (WebGL 2.0)
-
-- _(Tareas por definir en GitHub una vez el Milestone #2 esté completado)_
