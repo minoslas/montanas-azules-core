@@ -2,10 +2,12 @@
 import { Vec3 } from "../utils/Vector3";
 import {
     EstadoTarea,
+    IContextoSimulacion,
     IPosicion3D,
     ITarea,
     PrioridadTarea,
-    TipoTarea,
+    TipoBloque,
+    TipoTarea
 } from "./Tipos";
 
 export class GestorTareas {
@@ -38,34 +40,66 @@ export class GestorTareas {
 
   /**
    * @description Retorna la tarea libre más cercana al solicitante, respetando el orden de prioridad.
+   * @param {IContextoSimulacion} ctx - Contexto global inyectado.
    * @param {IPosicion3D} posicionSolicitante - Coordenadas actuales del trabajador.
    * @param {boolean} tieneMaterial - Indica si el trabajador tiene piedra en su inventario.
    * @performance O(T) búsqueda lineal.
    * @contexto Asignación de trabajo eficiente priorizada (Issue #8 y #9).
    */
   public obtenerTareaDisponible(
+    ctx: IContextoSimulacion,
     posicionSolicitante: IPosicion3D,
-    tieneMaterial: boolean = false,
+    tieneMaterial: boolean = false
   ): ITarea | undefined {
     let tareaSeleccionada: ITarea | undefined = undefined;
     let minDistancia = Infinity;
     let maxPrioridad = -1; // Iniciamos con la prioridad más baja posible
 
+    const esAccesible = (b: TipoBloque) => b === TipoBloque.AIRE || b === TipoBloque.AGUA;
+
     for (const tarea of this.cola) {
+      let penalizacionTecho = 0;
       if (tarea.estado === EstadoTarea.PENDIENTE) {
+        // FIX: Ignorar tareas inalcanzables castigadas temporalmente
+        if (tarea.bloqueadaHasta && tarea.bloqueadaHasta > ctx.tickActual) continue;
+
         // FILTRO ISSUE #9: Ocultar tareas de construcción si no hay material
         if (tarea.tipo === TipoTarea.CONSTRUIR && !tieneMaterial) continue;
 
+        // FILTRO DE SUPERFICIE: Evita bloqueos de CPU y solapamientos ignorando bloques enterrados
+        if (tarea.tipo === TipoTarea.PICAR || tarea.tipo === TipoTarea.RECOLECTAR) {
+            const p = tarea.posicion;
+            const expuestoHor = 
+                esAccesible(ctx.mapa.getBloque(p.x+1, p.y, p.z)) ||
+                esAccesible(ctx.mapa.getBloque(p.x-1, p.y, p.z)) ||
+                esAccesible(ctx.mapa.getBloque(p.x, p.y, p.z+1)) ||
+                esAccesible(ctx.mapa.getBloque(p.x, p.y, p.z-1));
+                
+            const expuestoVer = 
+                esAccesible(ctx.mapa.getBloque(p.x, p.y+1, p.z)) ||
+                esAccesible(ctx.mapa.getBloque(p.x, p.y-1, p.z));
+
+            if (!expuestoHor && !expuestoVer) continue;
+            
+            // Penalizamos si el bloque solo está expuesto por el techo.
+            // Obliga a priorizar talar la montaña desde las paredes laterales.
+            if (!expuestoHor) penalizacionTecho = 150;
+        }
+
         const d2 = Vec3.distanciaCuadrada(posicionSolicitante, tarea.posicion);
+        // Penalizamos fuertemente tareas a distinta altura para que no escalen montañas si hay trabajo abajo
+        const penalizacionAltura = Math.abs(posicionSolicitante.y - tarea.posicion.y) * 100;
+        const distanciaReal = d2 + penalizacionAltura + penalizacionTecho;
+
         const prioridadActual = tarea.prioridad;
 
         // LÓGICA MEJORADA: La prioridad manda. A igual prioridad, manda la distancia.
         if (
           prioridadActual > maxPrioridad ||
-          (prioridadActual === maxPrioridad && d2 < minDistancia)
+          (prioridadActual === maxPrioridad && distanciaReal < minDistancia)
         ) {
           maxPrioridad = prioridadActual;
-          minDistancia = d2;
+          minDistancia = distanciaReal;
           tareaSeleccionada = tarea;
         }
       }
@@ -90,6 +124,25 @@ export class GestorTareas {
     const tarea = this.cola.find((t) => t.id === id);
     if (tarea) {
       tarea.estado = EstadoTarea.ASIGNADA;
+    }
+  }
+
+  /**
+   * @description Devuelve una tarea fallida a la cola, reduciendo su prioridad para evitar bloqueos.
+   * @param {string} id - ID de la tarea inalcanzable.
+   * @param {number} [tickActual] - Opcional, tick para aplicar el bloqueo temporal.
+   * @contexto Solución al Efecto Cebolla (Issue #18).
+   */
+  public reprogramarTarea(id: string, tickActual?: number): void {
+    const tarea = this.cola.find(t => t.id === id);
+    if (tarea) {
+        tarea.estado = EstadoTarea.PENDIENTE;
+        // La degradamos a Baja. Así los clones preferirán minar los bloques expuestos primero.
+        tarea.prioridad = PrioridadTarea.Baja; 
+        if (tickActual !== undefined) {
+            // Descansamos de esta tarea durante 50 ticks para priorizar el resto del tablero
+            tarea.bloqueadaHasta = tickActual + 50; 
+        }
     }
   }
 

@@ -1,11 +1,11 @@
-import { MotorGrafico2D } from "./view/MotorGrafico2D";
 import { Simulador } from "./controller/Simulador";
-import { Mapa } from "./model/Mapa";
-import { Draconiano } from "./model/entities/Draconiano";
-import { Almacen } from "./model/entities/Almacen";
-import { GeneradorTerreno } from "./utils/GeneradorTerreno";
 import { LogicaMinera } from "./model/LogicaMinera";
-import { TipoBloque, TipoTarea, PrioridadTarea } from "./model/Tipos";
+import { Mapa } from "./model/Mapa";
+import { PrioridadTarea, TipoBloque, TipoTarea } from "./model/Tipos";
+import { Almacen } from "./model/entities/Almacen";
+import { Draconiano } from "./model/entities/Draconiano";
+import { GeneradorTerreno } from "./utils/GeneradorTerreno";
+import { MotorGrafico2D } from "./view/MotorGrafico2D";
 
 // --- PALETA DE COLORES DEL ARQUITECTO ---
 function obtenerColorVoxel(tipo: TipoBloque): string {
@@ -31,7 +31,7 @@ const simulador = new Simulador(mapaJuego);
 GeneradorTerreno.generarMontaña(mapaJuego, 50, 50, 5);
 
 const Korg = new Draconiano("d1", "Korg", 1, 1, 1);
-const NumD = 5; // Número de draconianos extra a reclutar
+const NumD = 10; // Número de draconianos extra a reclutar
 
 // Movemos el Almacén a la posición (1, 1) para que no se pegue al borde y lo veamos bien
 const AlmC = new Almacen("Almacen", 1, 1, 1);
@@ -49,30 +49,30 @@ for(let i = 0; i < NumD; i++) {
 }
 
 // CREAMOS LA VETA MINERA (Y:1 y Y:2)
-for (let x = 6; x <= 10; x++) {
+for (let x = 6; x <= 11; x++) {
     for (let y = 1; y <= 2; y++) {
-        for (let z = 4; z <= 8; z++) {
+        for (let z = 4; z <= 9; z++) {
             mapaJuego.setBloque(x, y, z, TipoBloque.PIEDRA);
         }
     }
 }
 
 // Construimos el muro en L (Piso 1)
-mapaJuego.setBloque(2, 1, 1, TipoBloque.MURO_PIEDRA);
-mapaJuego.setBloque(2, 1, 2, TipoBloque.MURO_PIEDRA);
-mapaJuego.setBloque(2, 1, 3, TipoBloque.MURO_PIEDRA);
-mapaJuego.setBloque(3, 1, 3, TipoBloque.MURO_PIEDRA);
+mapaJuego.setBloque(4, 1, 1, TipoBloque.MURO_PIEDRA);
+mapaJuego.setBloque(4, 1, 2, TipoBloque.MURO_PIEDRA);
 mapaJuego.setBloque(4, 1, 3, TipoBloque.MURO_PIEDRA);
+mapaJuego.setBloque(5, 1, 3, TipoBloque.MURO_PIEDRA);
+mapaJuego.setBloque(6, 1, 3, TipoBloque.MURO_PIEDRA);
 
 // EL ARREGLO: Ponemos el agua en el Piso 1, al mismo nivel que Korg
-mapaJuego.setBloque(4, 1, 4, TipoBloque.AGUA);
+mapaJuego.setBloque(8, 1, 5, TipoBloque.AGUA);
 
 // ASIGNACIÓN DE TAREAS AL GESTOR
 // 1. Tarea de agua
 simulador.getGestor().añadirTarea(TipoTarea.RECOLECTAR, { x: 4, y: 1, z: 4 }, PrioridadTarea.Alta);
 
 // 2. ¡TRABAJO REAL! Tarea de demolición masiva
-LogicaMinera.designarArea(simulador.getGestor(), { x: 6, y: 1, z: 4 }, { x: 10, y: 2, z: 8 });
+LogicaMinera.designarArea(simulador.getGestor(), { x: 6, y: 1, z: 4 }, { x: 15, y: 2, z: 12 });
 
 // --- 2. EL GAME LOOP ---
 let ultimoTiempo = 0;
@@ -103,7 +103,22 @@ function gameLoop(tiempoActual: number) {
         color: obtenerColorVoxel(b.tipo)
         })); // <-- Conversión Z a Y aquí
     
-    const posicionesDraconianos = simulador.getEntidades().map(e => ({ x: e.posicion.x, y: e.posicion.z }));
+    // Identificamos dinámicamente quién es el último draconiano creado
+    const entidades = simulador.getEntidades();
+    const idUltimo = entidades.length > 0 ? entidades[entidades.length - 1].id : "";
+
+    const posicionesDraconianos = entidades.map(e => {
+        let colorDraconiano = "#44ff44"; // Verde normal
+        if (e.id === "d1") colorDraconiano = "#00FFFF"; // Korg
+        else if (e.id === idUltimo) colorDraconiano = "#FF00FF"; // El último de la fila (Magenta)
+
+        return { 
+            x: e.posicion.x, 
+            y: e.posicion.z,
+            color: colorDraconiano
+        };
+    });
+
     const posicionesAlmacenes = [{ x: AlmC.posicion.x, y: AlmC.posicion.z }];
 
     // DIBUJAR

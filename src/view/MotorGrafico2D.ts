@@ -55,13 +55,14 @@ export class MotorGrafico2D {
         }
     }
 
-    /**
+/**
      * Dibuja a los colonos (Draconianos) en movimiento.
      */
-    public dibujarEntidades(entidades: {x: number, y: number}[]): void {
-        this.ctx.fillStyle = "#44ff44"; // Color verde Draconiano
-        
+    public dibujarEntidades(entidades: {x: number, y: number, color?: string}[]): void {
         for (const entidad of entidades) {
+            // Si la entidad trae un color propio lo usamos, si no, usamos el verde por defecto
+            this.ctx.fillStyle = entidad.color || "#44ff44"; 
+            
             const pixelX = entidad.x * this.TAMANO_BLOQUE;
             const pixelY = entidad.y * this.TAMANO_BLOQUE;
             

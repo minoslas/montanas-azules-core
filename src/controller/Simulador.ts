@@ -78,12 +78,12 @@ export class Simulador {
           const nuevoId = `d${this.entidades.length + 1}`;
           const nuevoNombre = `Clon-${this.entidades.length}`;
           
-          // Creamos al nuevo clon (aparece encima del almacén)
+          // Creamos al nuevo clon (aparece al lado del almacén, no en el tejado)
           const nuevoDraconiano = new Draconiano(
               nuevoId, 
               nuevoNombre, 
-              almacen.posicion.x, 
-              almacen.posicion.y + 1, // FIX: Aparece justo encima del almacén (+1 en el eje Y)
+              almacen.posicion.x + 1, 
+              almacen.posicion.y, // Mismo piso, para que no hagan "parkour" en los techos
               almacen.posicion.z
           );
 
@@ -108,7 +108,7 @@ export class Simulador {
 
     // FIX GC Friendly: Evitamos .forEach para no crear un callback temporal por cada tick
     for (const entidad of this.entidades) {
-      if (!entidad.estaVivo()) return;
+      if (!entidad.estaVivo()) continue;
 
       // PRIORIZAR SUPERVIVENCIA: Si está con hambre, se forzará a ir a COMER
       if (entidad.estado === EstadoIA.BUSCAR_RECURSO && !entidad.tareaActual) {

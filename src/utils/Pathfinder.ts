@@ -31,7 +31,7 @@ export class Pathfinder {
         abiertas.push(nodoInicio);
 
         let iteraciones = 0;
-        const MAX_ITERACIONES = 500; // Evita bloqueos de CPU si no hay salida
+        const MAX_ITERACIONES = 5000; // FIX: Altísima resiliencia para encontrar caminos muy largos o alternativos
 
         while (abiertas.length > 0 && iteraciones < MAX_ITERACIONES) {
             iteraciones++;
@@ -41,9 +41,9 @@ export class Pathfinder {
             const actual = abiertas.shift()!;
             cerradas.add(actual.id);
 
-            // CONDICIÓN DE ÉXITO: Estamos a 1 bloque de distancia del objetivo (alcance del pico)
+            // CONDICIÓN DE ÉXITO: Estamos a alcance del pico (DISTANCIA_INTERACCION = 1.9 -> ^2 = 3.61)
             const distAlObjetivo = Vec3.distanciaCuadrada(actual, destino);
-            if (distAlObjetivo <= 2.25) { // 1.5 al cuadrado = 2.25
+            if (distAlObjetivo <= 3.61) { 
                 const ruta: IPosicion3D[] = [];
                 let curr: Nodo | null = actual;
                 while (curr !== null) {
@@ -74,11 +74,30 @@ export class Pathfinder {
                     const bloqueSuelo = mapa.getBloque(nx, ny - 1, nz);
                     if (bloqueSuelo === TipoBloque.AIRE || bloqueSuelo === TipoBloque.AGUA) continue;
 
-                    // Si pasa las físicas, calculamos costes
+                    // 3. REGLAS ANTI-CLIPPING (Fantasmas atravesando materia)
+                    if (dy === 1) {
+                        // Si saltamos hacia ARRIBA: No podemos tener un techo sólido sobre la cabeza
+                        const bloqueTecho = mapa.getBloque(actual.x, actual.y + 1, actual.z);
+                        if (bloqueTecho !== TipoBloque.AIRE && bloqueTecho !== TipoBloque.AGUA) continue;
+
+                        // REGLA DE VERTICALIDAD ESTRICTA (Preparación para Subsuelo): 
+                        // Prohibimos escalar bloques a mano descubierta. Muros y piedra son 100% impasables.
+                        // (En un futuro, aquí validaremos: si no hay un TipoBloque.ESCALERA, continue;)
+                        continue; 
+                    } 
+                    else if (dy === -1) {
+                        // Si saltamos hacia ABAJO: El bloque frente a nosotros debe estar vacío (No cortar esquinas)
+                        const bloqueFrente = mapa.getBloque(nx, actual.y, nz);
+                        if (bloqueFrente !== TipoBloque.AIRE && bloqueFrente !== TipoBloque.AGUA) continue;
+                    }
+
+                    // Coste dinámico: Nadar o vadear por el agua cansa 5 veces más que caminar
+                    const costeTerreno = (bloqueDestino === TipoBloque.AGUA) ? 5 : 1;
+
                     const vecino = new Nodo(nx, ny, nz);
                     vecino.padre = actual;
-                    vecino.g = actual.g + 1 + (dy !== 0 ? 0.5 : 0); // Penalizamos un poco los saltos
-                    vecino.h = Math.abs(nx - destino.x) + Math.abs(ny - destino.y) + Math.abs(nz - destino.z); // Distancia Manhattan
+                    vecino.g = actual.g + costeTerreno + (dy !== 0 ? 15 : 0); // Fuerte penalización a saltar muros para forzar rodeos
+                    vecino.h = Math.abs(nx - destino.x) + (Math.abs(ny - destino.y) * 15) + Math.abs(nz - destino.z); 
                     vecino.f = vecino.g + vecino.h;
 
                     // Comprobar si ya está en abiertas con mejor coste

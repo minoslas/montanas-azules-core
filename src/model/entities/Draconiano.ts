@@ -1,6 +1,7 @@
 import { Pathfinder } from "../../utils/Pathfinder";
 import { Vec3 } from "../../utils/Vector3";
 import { GestorTareas } from "../GestorTareas";
+import { Mapa } from "../Mapa";
 import { EstadoIA, IContextoSimulacion, IInventario, INecesidades, IPosicion3D, ITarea, TipoBloque, TipoTarea } from "../Tipos";
 
 /**
@@ -18,6 +19,7 @@ export class Draconiano {
     private readonly RECUPERACION_SUENO = 2.0;
     private readonly CURACION_PASIVA = 10;
     private readonly DISTANCIA_INTERACCION = 1.9; // FIX REGLA #6: Refleja la tolerancia real de pathfinding
+    private readonly TOLERANCIA_LLEGADA_NODO = 0.1; // Para suavidad en la navegación A*
 
     readonly id: string;
 
@@ -35,6 +37,8 @@ export class Draconiano {
 
     //Nuevo ATRIBUTO: el GPS de Kong:
     private rutaActual: IPosicion3D[] | null = null;    
+    private ultimaPosicion: IPosicion3D | null = null;
+    private ticksAtascado: number = 0;
 
     /**
      * @description Verifica integridad vital básica.
@@ -122,9 +126,25 @@ export class Draconiano {
             this.rutaActual = null;  // FIX: Destruimos la ruta fantasma
         }
 
+        // --- FÍSICAS DE GRAVEDAD DINÁMICA ---
+        // Si estamos en el aire o pisamos agua (que no tiene suelo sólido debajo), caemos.
+        const xCentro = Math.round(this.posicion.x);
+        const yPies = Math.floor(this.posicion.y);
+        const zCentro = Math.round(this.posicion.z);
+        
+        const bloqueAbajo = ctx.mapa.getBloque(xCentro, yPies - 1, zCentro);
+        
+        if (bloqueAbajo === TipoBloque.AIRE || bloqueAbajo === TipoBloque.AGUA) {
+            this.posicion.y -= this.velocidad; // Caída libre (Gravedad)
+            if (this.rutaActual) this.limpiarEstado(); // El susto les hace perder la concentración
+            return; // No procesamos FSM mientras caemos
+        } else if (this.posicion.y > yPies) {
+            this.posicion.y = yPies; // Nos encajamos limpiamente en el suelo sólido
+        }
+
         switch (this.estado) {
             case EstadoIA.IDLE:
-                this.buscarTrabajo(ctx.gestor);
+                this.buscarTrabajo(ctx);
                 break;
             case EstadoIA.MOVING:
                 this.moverseATarea(ctx);
@@ -173,12 +193,33 @@ export class Draconiano {
     }
 
     /**
+     * @description Verifica si la tarea actual sigue siendo válida en el mapa (cumplida por otro colono).
+     * @contexto Validación dinámica de tareas y concurrencia.
+     */
+    private validarTarea(ctx: IContextoSimulacion): boolean {
+        if (!this.tareaActual) return false;
+        
+        const p = this.tareaActual.posicion;
+        const b = ctx.mapa.getBloque(p.x, p.y, p.z);
+        
+        if (this.tareaActual.tipo === TipoTarea.PICAR) {
+            if (b === TipoBloque.AIRE || b === TipoBloque.AGUA) return false;
+        } else if (this.tareaActual.tipo === TipoTarea.CONSTRUIR) {
+            if (b !== TipoBloque.AIRE && b !== TipoBloque.AGUA) return false;
+        } else if (this.tareaActual.tipo === TipoTarea.RECOLECTAR) {
+            if (b === TipoBloque.AIRE) return false; // Ya fue recolectado
+        }
+        return true;
+    }
+
+    /**
      * @description Intenta asignar la tarea espacialmente más cercana al draconiano si tiene capacidad en su inventario.
      * @param {GestorTareas} gestor - Gestor de tareas inyectado vía contexto.
      * @performance O(N) donde N es el número de tareas en cola. Delegado al Gestor.
      * @contexto Autogestión laboral para el ciclo de IDLE optimizado por vecindad.
      */
-    private buscarTrabajo(gestor: GestorTareas): void {
+    private buscarTrabajo(ctx: IContextoSimulacion): void {
+        const gestor = ctx.gestor;
         // Solo buscamos trabajo si hay espacio (OJO: para construir, sí queremos trabajar aunque la mochila esté llena)
         if (this.getCargaActual() >= this.getCapacidadMax() && this.estado !== EstadoIA.WORKING) {
             // Nota: La intercepción logística del Simulador ya se encarga de enviarlo a descargar,
@@ -190,7 +231,7 @@ export class Draconiano {
         const tienePiedra = cantidadPiedra > 0;
 
         // Pasamos nuestra posición para que el Gestor calcule la proximidad
-        const tarea = gestor.obtenerTareaDisponible(this.posicion, tienePiedra);
+        const tarea = gestor.obtenerTareaDisponible(ctx, this.posicion, tienePiedra);
         if (tarea) {
             this.tareaActual = tarea;
             gestor.asignarTarea(tarea.id);
@@ -205,29 +246,20 @@ export class Draconiano {
      * @contexto Navegación A* (Issue #14).
      */
     private moverseATarea(ctx: IContextoSimulacion): void {
-        if (!this.tareaActual) { 
-            this.rutaActual = null;
-            if (this.estado !== EstadoIA.BUSCAR_RECURSO) this.estado = EstadoIA.IDLE; 
-            return; 
+        if (!this.tareaActual) {
+            this.limpiarEstado();
+            return;
+        }
+
+        // 1. Validamos que la tarea aún no haya sido completada por otro clon
+        if (!this.validarTarea(ctx)) {
+            console.log(`[IA] ${this.nombre} cancela su ruta porque la tarea ya fue completada por otro.`);
+            ctx.gestor.finalizarTarea(this.tareaActual.id);
+            this.limpiarEstado();
+            return;
         }
 
         const destino = this.tareaActual.posicion;
-
-        // FÍSICAS EXTREMAS: La gravedad siempre domina. Si cae, pierde la ruta.
-        const xCentro = Math.round(this.posicion.x);
-        const yPies = Math.floor(this.posicion.y);
-        const zCentro = Math.round(this.posicion.z);
-        
-        const bloqueAbajo = ctx.mapa.getBloque(xCentro, yPies - 1, zCentro);
-        
-        if (bloqueAbajo === TipoBloque.AIRE || bloqueAbajo === TipoBloque.AGUA) {
-            this.posicion.y -= this.velocidad; 
-            this.rutaActual = null; 
-            return; 
-        } else if (this.posicion.y > yPies) {
-            // FIX DE FÍSICAS: Si hay suelo sólido pero flotamos por los decimales (ej. Y=1.5), encajamos los pies al suelo.
-            this.posicion.y = yPies;
-        }
 
         // CONTROL DE LLEGADA: ¿Estamos lo suficientemente cerca de la tarea?
         // FIX: Eliminado número mágico, usamos la constante de la clase
@@ -241,15 +273,16 @@ export class Draconiano {
 
         // SOLICITUD DE RUTA: Si no tenemos ruta, llamamos al GPS
         if (!this.rutaActual || this.rutaActual.length === 0) {
-            // Importa Pathfinder arriba en tu archivo: import { Pathfinder } from "../../utils/Pathfinder";
             this.rutaActual = Pathfinder.encontrarRuta(ctx.mapa, this.posicion, destino);
             
-            if (!this.rutaActual) {
-                if (ctx.tickActual % 20 === 0) console.warn(`[GPS] ${this.nombre} no puede acceder a su tarea en X:${destino.x}, Y:${destino.y}. Abandonando...`);
-                // Si está atrapado, suelta la tarea para intentar coger otra diferente
-                if(ctx.gestor) ctx.gestor.finalizarTarea(this.tareaActual.id); 
-                this.tareaActual = null;
-                this.estado = EstadoIA.IDLE;
+            // Si el Pathfinder falla (array vacío o null), es un bloque enterrado
+            if (!this.rutaActual || this.rutaActual.length === 0) {
+                
+                // 1. En lugar de borrar la tarea para siempre, la devolvemos castigada
+                if(ctx.gestor) ctx.gestor.reprogramarTarea(this.tareaActual.id, ctx.tickActual); 
+                
+                // 2. Limpiamos estado y volvemos a IDLE para pedir una mejor alternativa
+                this.limpiarEstado();
                 return;
             }
         }
@@ -257,18 +290,45 @@ export class Draconiano {
         // NAVEGACIÓN: Nos movemos hacia el siguiente punto de la ruta
         const siguientePunto = this.rutaActual[0];
         
-        // Si estamos muy cerca del punto intermedio, pasamos al siguiente
-        if (Vec3.distanciaCuadrada(this.posicion, siguientePunto) < 0.1) {
-            this.rutaActual.shift(); // Quitamos el nodo alcanzado
-        } else {
-            // FIX GC FRIENDLY: Mutamos la posición en lugar de crear un objeto literal por tick (Regla #2)
-            Vec3.moverHacia(this.posicion, siguientePunto, this.velocidad);
+        // --- VALIDACIÓN DINÁMICA DE RUTA ---
+        // Evita que se queden atascados si alguien bloquea su camino o se edita el terreno frente a ellos
+        const bloqueEnCamino = ctx.mapa.getBloque(siguientePunto.x, siguientePunto.y, siguientePunto.z);
+        if (bloqueEnCamino !== TipoBloque.AIRE && bloqueEnCamino !== TipoBloque.AGUA) {
+            console.log(`[NAVEGACIÓN] ${this.nombre} se topó con un obstáculo dinámico. Recalculando...`);
+            this.rutaActual = null; // Ruta obstruida, forzamos un recálculo limpio al próximo tick
+            return;
+        }
 
-            // NUEVO: Telemetría individual de movimiento. 
-            // (Usamos % 5 para que no colapse la consola con demasiados mensajes)
-            if (ctx.tickActual % 5 === 0) {
-                console.log(`[MOVIMIENTO] 👣 ${this.nombre} camina por X:${this.posicion.x.toFixed(1)}, Z:${this.posicion.z.toFixed(1)} hacia su objetivo.`);
+        // --- SISTEMA ANTI-ATASCOS (Evitación de Bloqueos Físicos) ---
+        if (this.ultimaPosicion && Vec3.distanciaCuadrada(this.posicion, this.ultimaPosicion) < 0.001) {
+            this.ticksAtascado++;
+            if (this.ticksAtascado > 15) {
+                console.warn(`[ATASCO] ${this.nombre} se quedó atorado físicamente. Desandando camino e intentando alternativa.`);
+                this.rutaActual = null;
+                if(ctx.gestor) ctx.gestor.reprogramarTarea(this.tareaActual.id, ctx.tickActual);
+                this.limpiarEstado();
+                // Lo centramos en la baldosa forzosamente para desengancharlo de las aristas
+                this.posicion.x = Math.round(this.posicion.x);
+                this.posicion.y = Math.round(this.posicion.y);
+                this.posicion.z = Math.round(this.posicion.z);
+                return;
             }
+        } else {
+            this.ticksAtascado = 0;
+            this.ultimaPosicion = { x: this.posicion.x, y: this.posicion.y, z: this.posicion.z };
+        }
+
+        // Si estamos muy cerca del punto intermedio, pasamos al siguiente
+        if (Vec3.distanciaCuadrada(this.posicion, siguientePunto) < this.TOLERANCIA_LLEGADA_NODO) {
+            
+            this.posicion.x = siguientePunto.x;
+            this.posicion.y = siguientePunto.y;
+            this.posicion.z = siguientePunto.z;
+
+            this.rutaActual.shift(); // Quitamos el nodo alcanzado
+
+        } else {
+            Vec3.moverHacia(this.posicion, siguientePunto, this.velocidad);
         }
     }
 
@@ -300,7 +360,21 @@ export class Draconiano {
      * @performance O(1).
      */
     private trabajar(ctx: IContextoSimulacion): void {
-        if (!this.tareaActual) return;
+        // SUPER-GUARDIA: Si estamos en estado WORKING, es un error lógico no tener tarea.
+        // Esto nos protege de estados corruptos (p.ej. al cargar partida) y evita un crash.
+        if (!this.tareaActual) {
+            console.error(`[ERROR LÓGICO] ${this.nombre} está en estado WORKING sin tarea. Volviendo a IDLE.`);
+            this.limpiarEstado();
+            return;
+        }
+
+        // Verificamos si alguien más ya completó esta tarea mientras minábamos
+        if (!this.validarTarea(ctx)) {
+            console.log(`[IA] ${this.nombre} cancela el trabajo porque la tarea fue finalizada por otro clon.`);
+            if (this.tareaActual) ctx.gestor.finalizarTarea(this.tareaActual.id);
+            this.limpiarEstado();
+            return;
+        }
 
         // Guardia de seguridad: si por algún motivo entra a trabajar con tarea de depositar
         if (this.tareaActual.tipo === TipoTarea.DEPOSITAR) {
@@ -351,12 +425,12 @@ export class Draconiano {
         const posicion = this.tareaActual!.posicion;
 
         //Confirmamos que bloque esta recolectando actualmente
-        const BloqueEnMapa = ctx.mapa.getBloque(posicion.x, posicion.y, posicion.z);
+        const bloqueEnMapa = ctx.mapa.getBloque(posicion.x, posicion.y, posicion.z);
         
         if (this.inventario.cargaActual < this.inventario.capacidadMax) {
             // Guardamos el bloque (en este caso agua)
-            const actual = this.inventario.items.get(BloqueEnMapa) || 0;
-            this.inventario.items.set(BloqueEnMapa, actual + 1);
+            const actual = this.inventario.items.get(bloqueEnMapa) || 0;
+            this.inventario.items.set(bloqueEnMapa, actual + 1);
             this.inventario.cargaActual++;
             console.log(`[INV] ${this.nombre} recolectó un recurso (${this.inventario.cargaActual}/10).`);
         }
@@ -431,6 +505,8 @@ export class Draconiano {
         this.progresoTrabajo = 0;
         this.estado = EstadoIA.IDLE;
         this.rutaActual = null; // FIX: Limpieza profunda del GPS al acabar de trabajar
+        this.ticksAtascado = 0;
+        this.ultimaPosicion = null;
     }
 
     /**

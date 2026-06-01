@@ -16,7 +16,7 @@ GeneradorTerreno.generarMontaña(miMapa, 100, 100, 20);
 const motor = new Simulador(miMapa);
 
 // Creamos a nuestro primer habitante
-const Drac = new Draconiano("d1", "Korg", 0, 1, 0); // Lo ponemos en Y:1 para que pise la superficie
+const Drac = new Draconiano("d1", "Korg", 1, 1, 0); // Lo ponemos en Y:1 para que pise la superficie
 const AlmC = new Almacen("Almacen", 0, 1, 0); // Ponemos el almacen tambien en superficie
 const NumD = 5; // Número de draconianos
 

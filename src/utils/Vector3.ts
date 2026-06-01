@@ -1,4 +1,4 @@
-import { IPosicion3D, TipoBloque } from "../model/Tipos";
+import { IPosicion3D } from "../model/Tipos";
 
 export class Vec3 {
     /**
@@ -33,24 +33,33 @@ export class Vec3 {
         };
     }
 
-    /**
-     * @description Modifica el punto origen hacia el objetivo sin crear nuevos objetos en memoria.
-     * @param {IPosicion3D} actual - Origen que será mutado (GC Friendly).
+/**
+     * @description Modifica el punto origen hacia el objetivo usando Lógica Voxel pura.
+     * @param {IPosicion3D} actual - Origen que será mutado.
      * @param {IPosicion3D} destino - El destino al que tendemos.
      * @param {number} velocidad - Multiplicador de escala.
-     * @performance O(1). No activa el Garbage Collector. Regla #2.
      */
     static moverHacia(actual: IPosicion3D, destino: IPosicion3D, velocidad: number): void {
         const d = this.distancia(actual, destino);
-        if (d < 0.1) {
+        
+        const dx = destino.x - actual.x;
+        const dy = destino.y - actual.y;
+        const dz = destino.z - actual.z;
+
+        // --- MOVIMIENTO ORTOGONAL ESTRICTO ---
+        // Obligamos a resolver el movimiento alineado a los ejes para nunca cortar por las diagonales 
+        // Esto asegura que el material sólido sea impenetrable y no colisionen al bordear esquinas.
+        if (Math.abs(dy) > 0.01) {
+            actual.y += Math.sign(dy) * Math.min(velocidad, Math.abs(dy));
+        } else if (Math.abs(dx) > Math.abs(dz)) {
+            actual.x += Math.sign(dx) * Math.min(velocidad, Math.abs(dx));
+        } else if (Math.abs(dz) > 0.01) {
+            actual.z += Math.sign(dz) * Math.min(velocidad, Math.abs(dz));
+        } else {
             actual.x = destino.x;
             actual.y = destino.y;
             actual.z = destino.z;
-            return;
         }
-        actual.x += ((destino.x - actual.x) / d) * velocidad;
-        actual.y += ((destino.y - actual.y) / d) * velocidad;
-        actual.z += ((destino.z - actual.z) / d) * velocidad;
     }
 
     /**

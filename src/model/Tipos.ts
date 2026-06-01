@@ -67,6 +67,7 @@ export interface ITarea {
   posicion: IPosicion3D;
   prioridad: PrioridadTarea;
   estado: EstadoTarea;
+  bloqueadaHasta?: number; // FIX: Penalización para evitar bucle infinito en tareas inalcanzables
 }
 
 export interface IPosicion3D {
